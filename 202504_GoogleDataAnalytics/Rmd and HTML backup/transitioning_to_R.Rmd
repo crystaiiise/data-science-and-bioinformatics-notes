@@ -1,0 +1,884 @@
+---
+title: "Transitioning To R: Tutorial Notes (Plus R Viz)"
+author: "Kiara"
+output: html_document
+date: "2025-04-21"
+---
+
+**Sources**: [R Tutorial on W3Schools](https://w3schools.tech/tutorial/r/index) and [Google Data Analytics](https://www.coursera.org/professional-certificates/google-data-analytics) Course 7. I also added a few notes while taking JHU's [Genomic Data Science Specialization](https://www.coursera.org/specializations/genomic-data-science).
+
+## RStudio
+
+'Tools' menu -> **'Keyboard Shortcuts Help' (Alt + Shift + K)**
+
+- 4 panes, 'View' menu -> 'Panes' -> 'Show All Panes'. 
+	
+	- The 'History' pane on the right allows us to copy any executed line directly to the console by double-clicking it.
+		
+	- When we have questions about a function/package, type a question mark before it (eg. `?print`) to return a page in the 'Help' pane.
+
+## R Basics
+
+### Variables
+
+- To assign values, the typical way is via `<-` rather than `=` (the latter passes arguments to functions, though it can also be used for assignment).
+
+  - You can also assign multiple variables in one line: 
+  `x <- y <- z <- 10` 
+  
+  - There's even the 'right assignment': `20 -> y`.
+  
+- Add an L to explicitly assign an integer value.
+`my_integer <- 42L`; `my_number <- 42.5` ("numeric" types are floats that contain decimals). 
+
+- `rnorm(n)` returns n random numbers.
+
+- To check what type of data a variable holds, use the `class()` function. Note that Boolean types are called "logical".
+
+```{r}
+test <- TRUE
+random = rnorm(3)
+print(class(test))
+print(random)
+print(class(random))
+```
+
+#### Finding variables
+
+- The `ls()` function lists all variables in ur current environment.
+
+- To check if a specific variable exists, use the `exists()` function.
+
+- The `rm()` function removes variables.
+
+```{r}
+print(ls())
+rm(list = ls()) # Remove all and start with a clean state. Caution!!!
+print(ls())
+```
+
+
+### Data structure overview
+	
+- Vectors: `c(x, y, z, ...)`. Simplest and most fundamental data structures in R, each containing a single piece of data of the **same type**, use `[]` to access. 
+```{R}
+x = c(1,3,5)
+names(x) = letters[4:6] # We can name the elements of a vector object.
+print(x)
+print(x[c('d','f')])
+```
+	
+- Lists can contain **different types of data**. The feeling is sort of like `dict` in Python as we get to name the elements (like having keys for values). We can also directly create a list without having the elements named: `my_first_list <- list("apple", 42, TRUE, c(1, 2, 3))`.
+
+```{r}
+my_list <- list(
+  name = "Alice",
+  age = 30,
+  likes = c("pizza", "coding", "cats")
+)
+
+print(my_list[2]) # Returns a separated list
+# VALUES of elements are accessed using [[]] or $.
+print(my_list$name)  
+print(paste(my_list[[2]],"since the index in R starts from 1!!!!! not 0!!!!"))  
+# paste() or paste0() are for concatenation of strings; note that the former inserts spaces between elements.
+print(my_list[["likes"]][2])  
+print(paste("also", my_list[[3]][2]))  
+```
+
+- Matrices: rows and columns **all filled with the same type of data**.
+
+```{r}
+my_matrix <- matrix(1:9, nrow = 3, ncol = 3)
+print(my_matrix[2, 3])
+# Set rownames
+rownames(my_matrix) = letters[1:3]
+print(my_matrix)
+print(my_matrix['a',]) # Returns a *vector*
+print(my_matrix['a', , drop=FALSE]) # Returns a *matrix* with only one row.
+```
+- Arrays: stacked matrices. Note that the values from the specified sequence are arranged vertically down the column!! Or we can add argument `byrow = True`.
+
+```{r}
+my_array <- array(2:13, dim = c(2,3,2))
+print(my_array)
+print(my_array[1,2,2])
+```
+
+	
+- Factors: a data structure that stores **categorical data** where the data values are limited and usually based on a finite group. Think of them as **labels**. 
+
+```{r}
+sizes <- factor(c("small", "medium", "large", "medium", "small"))
+print(sizes)
+print(levels(sizes))
+```
+
+- Data frames: unlike matrices (store the same type of data), they are capable of holding **different types of data in each column**. Rlly just a list where each element in the list is of the same length (an example that illustrates this can be seen in one code chunk below with `as.list(df)`)
+
+```{r dataframe_test}
+students <- data.frame(
+  name = c("Alice", "Bob", "Charlie"),
+  age = c(22, 25, 23),
+  age2 = c(22, "25", 23),  # Testing whether the same column allows for different data types. Ooooh so it coerces to <chr> automatically.
+  grade = c("A", "B", "A")
+)
+
+print(students)
+print(students$age)
+print(students$age2)
+print(students[['name']]) # Can also be accessed like this, same as lists. Column-oriented. 
+print(students[students$age >=23, ])
+# If we omit comma here, R treats it as column subsetting, not row subsetting!!! (since we use [rows, columns] to access elements)
+print(students[students$age >=23])
+```
+
+  - Regarding the output of `print(students[students$age >=23])`: it is actually interpreted as `students[, c(FALSE, TRUE, TRUE)]` so instead of rows the columns with index 2 and 3 are selected OvO!
+  
+    - Recall that a column in a spreadsheet can be considered as a feature/attribute. So it's pretty intuitive for this default indexing (by column -> by **header**!!).
+
+- We can use the `as.something()` function to convert between data structures. Or use the more general `as(object, "data_structure)` function inside the `methods` package. 
+```{r}
+print(as.matrix(students))
+print(as.list(students))
+
+library(methods)
+as(students, "matrix")
+```
+
+
+---
+
+![Screenshot from w3schools](https://img.picui.cn/free/2025/04/21/6805abf23df7e.png)
+
+---
+
+### Operators
+
+#### Arithmetic
+
+- Modulus: `%%`
+
+- Integer division: `%/%`
+
+- Exponentiation: `^`
+
+#### Relational
+
+Same as Python.
+
+#### Logical
+
+- Element-wise AND:
+```{r}
+c(TRUE, FALSE, TRUE) & c(TRUE, TRUE, FALSE)
+```
+
+- Likewise, element-wise OR:
+```{r}
+c(TRUE, TRUE, FALSE) | c(FALSE, TRUE, FALSE)
+```
+
+#### Miscellaneous
+
+R also has some special operators that don't fit neatly into the other categories. 
+```{r}
+# Checks if an element is in a vector (similar to Python but with % around)
+5 %in% c(1, 3, 5)
+"cat" %in% c("goose", "duck")
+
+# Creates a sequence. Unlike Python you can't specify the stride since it's either 1 (or -1 for descending sequences). (To explicitly customize the stride, use the function seq(from, to , by = stride) via the 'by' argument.)
+1:5
+class(1:5)
+
+# Matrix multiplication
+matrix(1:4, 2, 2) %*% matrix(5:8, 2, 2)
+matrix(1:4, 2, 2)
+# Again, note that when creating a matrix, the values are arranged vertically. 
+```
+
+### Conditional and loop control statements
+
+ok the way these are written is so extremely similar to Java (except no semicolons)
+```{r}
+a <- -2L
+b <- FALSE
+if (a >= 0 & b) {
+  print("1")
+} else if (!b) {
+  print("2")
+} else if (a < 0) {
+  print("3")
+} else {
+  print("4")
+}
+```
+
+- `switch` statement: a more readable alternative to a long `if-else if` chain. And it's even more succinct in R with no `break`s!!!
+```{R switch_statement}
+day <- '1'
+switch(day,
+  '1' = "Monday",
+  '5' = "Friday",
+)
+```
+
+- R has a nifty function `ifelse()` that combines an `if-else` statement into **a single line**:
+```{r}
+x <- 10
+ifelse(x > 5, "Greater than 5", "Not greater than 5")
+```
+
+
+- `next`: skips the rest of the current iteration and moves directly to the next iteration of the loop. **Equivalent of `continue`**. 
+
+- `repeat`: equivalent of `while True`. Accompanied by `break`.
+
+```{r}
+for (i in 1:10) {
+  if (i %% 3 == 0) {
+    next
+  }
+  print(i)
+}
+
+count <- 0
+repeat {
+  count <- count + 1
+  if (count > 5) {
+    break
+  }
+}
+print(paste0("count = ",count))
+```
+
+### Functions
+
+#### Defining a function
+```{r defining_func}
+func_name <- function(argumen1, argumen2) {
+  return_value1 <- c(argumen2, argumen1)
+}
+
+# calling it
+test <- func_name(1,2)
+test
+```
+
+R only evaluates arguments when they're actually used in the function ('lazy evaluation'). Eg.
+```{r}
+lazy_function <- function(x, y) {
+  print("I'm working!")
+  return(x)
+}
+result <- lazy_function(5, stop("This won't run!")) 
+# passing an error-causing stop() function as the second argument
+print(result)
+# our function runs without issues because it never uses the second argument
+```
+
+### Strings
+
+- Concat by `paste()` and `paste0()`.
+
+- String extraction is also done by `[start_index:end_index]`.
+
+- Return the length: `nchar(string)`
+```{r}
+a <- "a b c"
+print(nchar(a))
+print(nchar("abc"))
+```
+
+- Change the case: `toupper(string)` and `tolower(string)`
+
+- Find and replace: `gsub(find_value, replacement, target_string)`
+```{r}
+gsub("cats", "dogs", "I like cats")
+gsub("cats", "dogs", "I like ") # whoa so no error message if value not found
+```
+
+### Vectors
+
+- The `:` operator returns a sequence of integers 
+```{r}
+seq1 = 1:3
+seq2 = c(1,2,3)
+print(seq1)
+print(class(seq1))
+print(class(seq2))
+```
+
+- `seq(from, to, other keyword arguments...)`, like `arange()` and `linspace()`. Note again that keyword arguments are passed by `=`. 
+
+- `rep(value_to_be_repeated, other keyword arguments...)` for repeating values.
+```{r}
+seq3 <- seq(1, 5, by=2)
+seq4 <- seq(1, 5, length.out=3)
+seq3
+seq4
+
+# Repeating a single value
+repeat_five <- rep(5, times = 3)
+print(repeat_five)
+# Repeating a vector
+repeat_vector <- rep(c(1, 2), times = 3)
+print(repeat_vector)
+# Repeating each element
+repeat_each <- rep(c(1, 2), each = 3)
+print(repeat_each)
+```
+
+- *Negative indexing* in R is used to *exclude elements* rather than accessing from the end.
+```{r}
+a <- c("a", "b", "c")
+print(a[-2])
+```
+
+
+- **You can also use logical vectors to access elements**, as shown in the data frame code chunk above. 
+```{r}
+print(a[a != "b"]) # a[TRUE, FALSE, TRUE]
+```
+
+- Vector arithmetic operations are done element-wise. If the lengths don't match, R will **'recycle' the shorter vector by repeating it to match the length of the longer one**. 
+
+  - **This is not the same as broadcasting in numpy**, which allows the input arrays to have different numbers of *dimensions* but NOT different shapes (except when one of the input is 1) in the *same dimension* (compared right to left). So vector recycling is more flexible. 
+
+- `sort()` sorts the vector in ascending order; `rev()` reverses the order of elements.
+
+### Lists
+
+- Merging lists:
+```{r}
+list1 <- list(a = 1, b = 2)
+# We can even throw functions into a list
+list2 <- list(c = 3, d = 4, e = mean) 
+merged_list <- c(list1, list2)
+print(merged_list)
+```
+- `unlist()`: converts/flattens the list into named vectors. 
+```{r}
+print(list1)
+print(unlist(list1))
+# Reset the name for list1 to illustrate 'partial matching' 
+names(list1) = c('number','another_number')
+print(list1$n) # Partial matching
+# This can be so confusing (and dangerous when the names start in the same way)
+names(list1) = c('number','number_another')
+print(list1$n) # Outputs NULL.
+```
+
+- `lapply(list, func_name)`: applies a function to all elements of a list (mapping). `sapply` simplifies the output. We can apply these functions for data frames as well since they are basically just lists whose elements are all of the same length. 
+```{r}
+list3 = lapply(list(c(1,2),c(3,4),c(5,6,7,9)), max)
+print(list3) # Still a list 
+print(unlist(list3))
+print(sapply(list3, max)) # Directly simplified as a vector
+```
+
+
+### Matrices
+
+- `t()` for transposing the matrix. 
+```{r}
+# the second and third arguments are nrow and ncol; distinguish that from the argument when creating an array: it's a *single* argument that specifies the *dimension*. 
+a_matrix <- matrix(c(10, 20, 30, 40, 50, 60), 2, 3) 
+print(a_matrix)
+# what happens if no comma when indexing
+print(a_matrix[2]) # ok so the second element; this is different from data frame
+print(a_matrix[2,])
+print(a_matrix[,2])
+print(t(a_matrix))
+```
+
+### Arrays
+
+*n*-dimensional (whereas data frames can only be *2D*); **all elements must be the same type** eg. all numeric or all character.
+
+We can give names/labels to the indices of different dimensions. (note that these arguments passed to the function aren't strictly keyword arguments; explicitly, they're `dim()` (i.e., the shape) for the second argument and `dimnames()` for the third argument.)
+```{r}
+# Creating an array with named indices
+student_scores <- array(
+  c(85, 90, 78, 92, 88, 76, 95, 87, 82),
+  c(3, 3),
+  list(
+    c("Alice", "Bob", "Charlie"),
+    c("Math", "Science", "English")
+  )
+)
+print(student_scores)
+
+# Updating a single score
+student_scores["Charlie", "English"] <- 89
+print(student_scores["Charlie", "English"]) 
+# Updating an entire row
+student_scores["Alice", ] <- c(91, 93, 97)
+print(student_scores) 
+```
+- Array functions/methods: 
+
+  - `dim()` and `dimnames()`: these two are not only keyword arguments when creating an array using `array()`, but also functions to get the corresponding parameters for a given array.
+  
+  - `length(array)`: returns the total number of elements
+  
+  - `apply(array, axis, func_name)`: applies a function (eg. those aggregate functions (is this a SQL term? nvm)) over **the specified axis** rather than element-wise. Regarding the second argument (axis), 1 for by row, etc. 
+  
+  - `sweep(array, axis, aggregated_func(array))`: sweeps out array summaries/aggregations.
+  
+  - `aperm(array, permutation_vector, resize = TRUE)`: permutes the dimensions of an array. It rearranges the order of the dimensions of an array based on a specified permutation vector (`resize = TRUE` by default).
+```{r}
+arr <- array(1:24, dim = c(2, 3, 4))
+# Permute dimensions (it's swapping the first and second dimensions rather than specifying the new shape!!)
+result <- aperm(arr, perm = c(2, 1, 3))
+dim(result)  # See? It's swapped.
+arr
+result
+```
+  
+### Factor  
+
+**A date type**. Representing **categories**. 
+```{r}
+# Create a vector of collected pet preferences
+pets <- c("Dog", "Cat", "Dog", "Fish", "Cat", "Dog", "Hamster")
+# Convert the vector to a factor
+pet_factor <- factor(pets)
+# Factor is a data type
+print(class(pets))
+print(class(pet_factor))
+# Print the factor/categories
+print(pet_factor)
+# Get a summary of the factor: returns the count of how many times each level appears in our factor. 
+summary(pet_factor)
+```
+
+**Levels** are the *unique categories* in the factor. Initially, R alphabetically orders the levels. We can reorder it by:
+```{r}
+print(levels(pet_factor))
+pet_factor <- factor(pet_factor, levels = c("Dog", "Cat", "Fish", "Hamster"))
+print(levels(pet_factor))
+```
+
+Generating factor levels (**ordered** factors (`level1 < level2`) have data types as `<ord>`)
+```{r}
+# Generate a sequence of months (month.abb is a built-in R constant) to create a factor of month abbreviations
+months <- factor(month.abb)
+print(levels(months))
+
+# Create a factor with custom levels and specify the **order** we want the levels to be.
+temperatures <- factor(c("Cold", "Hot", "Mild", "Hot", "Cold"),
+                       levels = c("Cold", "Mild", "Hot"),
+                       ordered = TRUE)
+print(temperatures)
+class(temperatures)
+```
+- Factor functions: 
+
+  - `nlevels()`: get the number of levels (i.e., unique categories in a factor).
+  
+  - `as.numeric()`: convert a factor to numeric (based on level order).
+  
+  - `as.character()`:	convert a factor to character.
+  
+  - `table()`: create a frequency table of a factor.
+  
+  - `droplevels()`:	remove *unused levels* from a factor.
+  
+
+### Packages
+
+Besides Base R packages ("base" in column 'Priority' when running `installed.packages()`), other unloaded packages (shown as "recommended" in that column) require `library(package_name)` for a new session. After that, we can see the package in 'System Library' of the 'Packages' pane ticked. Click on the package name there to access the Help page. 
+
+- `available.packages()` shows packages available on CRAN (*the Comprehensive R Archive Network*, just the place where we downloaded R), which ensures that any R content not from Base R meets the required quality standards to be open to the public.
+
+- Installing: use `install.packages("package_name")`. This command installs directly from CRAN. (When installing a package manually, first download it to the path and then `install.packages("path/to/package_file.tar.gz", repos = NULL, type = "source")`)
+	
+- Loading. Conflicts happen when packages have functions with the same names as other functions. The last package loaded is the one whose functions will be used over others.
+	
+	
+- `old.packages()` checks for outdated packages
+
+- `remove.packages("package_name")` uninstalls a package
+
+- `packageVersion("package_name")` checks the version of a package
+
+- `update.packages()` will update **all** ur packages (which will take a while), so use `install.packages("package_name")` **again** to update that one.
+
+	
+### Data frames
+
+- Creating a df (*always have header rows (column names)!!!*)
+```{r}
+rm(list = ls())
+students <- data.frame(
+  name = c("Alice", "Bob", "Charlie"),
+  age = c(22, 25, 23),
+  grade = c("A", "B", "A-")
+)
+print(students)
+```
+
+- Changing a column to factor-typed (also practicing to **access a column by its name/header and modify it**)
+```{r}
+students$grade <- factor(students$grade)
+```
+
+- Getting the **structure** and **summary** of our data frame:
+
+  - **Here it calls rows 'observations' and columns 'variables'.** Recall the records/fields notation.
+
+```{r}
+# Notice how 'grade' is now a factor with 3 levels.
+str(students) # Stands for internal 'str'ucture not string
+summary(students) # Provides an overview of each column.
+# summarize(students) this one (from dplyr rather than base R) is usually for grouped df after `group_by()` and allows for custom calculations!!! DISTINGUISH!!
+```
+- Extract and expand data
+
+**Note that `cbind()` and `rbind()` are also used to add columns or rows (through a vector) to a matrix or an array, not just to a df (which requires binding of a df object).**  
+```{r}
+# Get multiple columns
+print(students[, c("name", "age")])
+
+# Add a new column
+students$height <- c(165, 180, 175)
+
+# Add a new row (similar to the rbind() function for rows, columns/new variables can also be added by cbind() in addition to $)
+new_student <- data.frame(name = "David", age = 24, grade = "B+", height = 178)
+students <- rbind(students, new_student)
+print(students)
+print(sapply(students,class))
+```
+
+- **Merging** two data frames (equivalent to `INNER JOIN` but you don't specify the overlapped column on which matching is based), 'INNER' since apparently 'Kiara' isn't merged as the 'name' column isn't matched between the two data frames)
+```{r merge_data_frames}
+student_ids <- data.frame(
+  name = c("Charlie", "Bob", "Alice", "David", "Kiara"),
+  student_id = c("1a", "1b", "1c", "1d", "not_anyone_here")
+)
+students <- merge(students, student_ids)
+print(students)
+```
+
+- **Melting** and **casting** data.
+```{r}
+#install.packages("reshape2")
+library(reshape2)
+
+melted_students <- melt(students, id.vars = 'name')
+melted_students2 <- melt(students, id.vars = 'student_id')
+print(melted_students)
+print(melted_students2)
+
+casted_students <- dcast(melted_students, variable ~ name)
+print(casted_students)
+```
+
+- Other data frame methods:
+
+  - `head(df)`	shows the first 6 rows of the data frame (so similar to pandas); `tail(df)`	shows the last 6 rows of the data frame.
+  
+  - `nrow(df)` counts the number of rows; `ncol(df)` counts the number of columns.
+  
+  - `names(df)`	gets the column names; `colnames(df)`	is another way to get or set column names. `rownames(df)` gets or sets row names. (df rownames must be unique!!)
+  
+  - `dim(df)`	returns the shape (rows and columns).
+  
+- With `df <- read.csv("file_name.csv")`, R can read a .csv file and store it in a data frame variable.
+  
+  - After installing and loading the *xlsx* package, we can also read an Excel file and store it as a data frame. 
+
+- Writing a data frame into a .csv: `write.csv(df_variable, "new_file_name.csv")`
+  
+  - `row.names = FALSE` excludes row names from the output; `quote = FALSE` prevents quoting of strings, `na = "NA"` specifies how to represent missing values. 
+  
+  - `write.xlsx()` writes to an Excel file. 
+  
+
+
+---
+
+## Course Notes
+
+**Tidyverse**: a system of packages with a common design philosophy for data manipulation, exploration and visualization (pretty much the entire data analysis process). 
+	
+- Check for updates by `tidyverse_update()`. (Output: `All tidyverse packages up-to-date`)
+	
+- 9 core tidyverse packages. 
+
+  - 4 of them are an essential part of the workflow for data analysts: **ggplot2**, **dplyr** (data manipulation, eg. `select` for variables and `filter` for conditions), **tidyr** (cleaning), **readr** (importing data, eg. `read_csv` (uhh the same as pandas), combined with a column specification that ensures appropriate data type conversions (usually done automatically by readr)). 
+	
+	
+I feel like some workflow involving this package follows a similar logic to SQL queries :O
+
+### Dealing with data in R
+
+**Tibbles**: streamlined data frames, but-
+
+- Never changes the data types of the input (eg. you can't convert the vector to a factor).
+
+- Never changes the names of the variables (i.e., column names).
+
+- Never creates row names.
+
+- Makes printing easier (automatically set to only pull up the first 10 rows and as many columns as fit on screen).
+
+	
+**Pipe**: a tool in R for expressing **a sequence of multiple operations** (so just like `Pipeline()` in sklearn), represented with `%>%` (*cmd + Shift + m*). It's used to apply the output of one function to another function.
+
+(**Most data manipulation functions in tidyverse are `inplace=False`**!! so remember to assign back if you want to have the original one edited.)
+
+**Bias function**: we can quantify bias by comparing the actual outcome of our data and the predicted outcome using `bias()` from the 'SimDesign' package. Basically it finds the average amount that the actual outcome is greater than the predicted outcome. If the model is unbiased, the outcome should be pretty close to zero. 
+
+**Pivoting**: using the `pivot_longer()` and `pivot_wider()` functions from the `tidyr` package to solve data reshaping tasks (like transforming between wide data and long data). They improve the usability of the `gather()` and `spread()` functions, as these two don't have very intuitive names and arguments.  
+
+- `pivot_longer()`: reshapes data from wide to long format by gathering columns into key-value pairs. 
+```R
+data_long <- pivot_longer(
+  data = df,
+  cols = c("Jan", "Feb", "Mar"),  # Columns to pivot
+  names_to = "Month",
+  values_to = "Revenue"
+)
+```
+
+- `pivot_wider()`: reshapes data from long to wide format by spreading key-value pairs into columns.
+```R
+data_wide <- pivot_wider(
+  data = df_long,
+  names_from = "Month",     # Column to spread into new columns
+  values_from = "Revenue"   # Values to fill the new columns
+)
+```
+
+
+#### 'ToothGrowth' exploration
+```{r toothgrowth_dataset_exploration, message=TRUE}
+library(tidyverse)
+
+# To load an already installed dataset
+data(ToothGrowth)
+# view(ToothGrowth) this one's annoying so i'm annotating it
+names(ToothGrowth)
+
+# Function from the dplyr package for data manipulation
+# filter() to return only rows with VC doses of exactly 0.5.
+filtered_tg <- filter(ToothGrowth, dose == 0.5)
+
+# Sort rows in ascending order by the values of the column in the second argument (in this case 'len')
+arrange(filtered_tg, len)
+
+# A nested function `arrange(filter(ToothGrowth, dose == 0.5), len)` would do the same tasks.
+
+# So would a pipe. It automatically applies the dataset to each step. First it calls the dataset, filters it, and then sorts it (to distinguish the previous execution, the pipe here sorts it in **descending order** (note the parameter!!!)). BAM! 
+sorted_filtered_tg <- ToothGrowth %>% 
+  filter(dose == 0.5) %>% 
+  arrange(desc(len))
+print(sorted_filtered_tg)
+
+grouped_tg <- ToothGrowth %>% 
+  filter(dose == 0.5) %>% 
+  group_by(supp) %>% 
+  summarize(mean_len = mean(len, na.rm = T)) 
+grouped_tg
+```
+
+#### 'diamonds' exploration
+```{r}
+data(diamonds)
+# View(diamonds) this can be super large and annoying so we only view the first six rows
+head(diamonds)
+colnames(diamonds)
+# We can also use the dplyr func mutate() to make changes to columns in our df. 
+# It creates new columns that are *functions of existing variables*, or modifies (if the assigned name is the same as an existing column) and delete columns (by setting their value to NULL).
+mutate(diamonds, carat_100=carat*100)
+```
+
+#### Other quick overviews, cleaning, and organization of data
+```{r}
+library(palmerpenguins)
+library(skimr)
+skim_without_charts(penguins)
+glimpse(penguins)
+str(penguins) # 'str' here stands for structure, not string!!
+# Using pipe
+penguins %>% 
+  select(species, island) %>% 
+  rename(iSLaNd_NeW=island)
+# rename_with() similarly renames columns, but allows a function to be applied the the column names:
+rename_with(penguins, tolower)
+adelie_penguins <- penguins %>% filter(species == "Adelie")
+adelie_penguins
+
+library(janitor)
+# Keeps column names consistent
+clean_names(penguins)
+# By adding a minus sign, it also sorts in desc order. Then we can save the new table in another df
+penguins2 <- penguins %>% arrange(-bill_length_mm)
+# Aggregating data, and use summarize() according to groups: summarize each group down to one row, with additional columns for each of the specified summary statistics (in this case, the mean and maximum of bill length.)
+penguins %>% group_by(island, species) %>% drop_na() %>% summarize(mean_bill_len = mean(bill_length_mm), max_bill_len = max(bill_length_mm))
+
+penguins %>% mutate(body_mass_kg = body_mass_g/1000, flipper_length_m = flipper_length_mm/1000)
+
+# Separating columns and uniting them (just testing the function,,, i know splitting 'species' doesn't make sense at all QvQ)
+adelie_penguins <- separate(adelie_penguins, species, into=c("sp","ecies"), sep='l') # 'l' gets eaten (but don't worry- we'll get it back right after unite() via the same separator)
+adelie_penguins
+# unite() is just in the reverse order
+unite(adelie_penguins, 'species', sp, ecies, sep='l')
+```
+
+
+### Visualization in R
+
+Anscombe's quartet: four datasets ('sets') that have nearly identical summary statistics. But just looking at the summary statistics and concluding that these four datasets are the same can be very misleading. -> we now visualize the data
+```{r}
+library(Tmisc)
+
+data(quartet)
+head(quartet) 
+summary(quartet) # Four data'set's: the quartet. So we group them and see the summary statistics
+quartet %>% group_by(set) %>% summarize(mean(x),sd(x),mean(y),sd(y),cor(x,y)) # Identical summary statistics
+
+ggplot(quartet,aes(x,y)) + geom_point() + geom_smooth(method=lm,se=FALSE) + facet_wrap(~set) # Apparently they aren't identical.
+```
+#### ggplot2
+
+'gg' stands for 'grammar of graphics'. 
+
+**Core concepts**:
+
+- Geoms: the geometric object used to represent the data. 
+
+- Aesthetics: visual properties of the variables we have chosen from our data in the 'geoms' step (eg. x, y, color, shape, size, alpha).
+
+- Facets: let you display smaller groups, or subsets, of ur data. 
+
+- Labels and annotations
+
+#### Basic grammar for plotting in ggplot2
+
+1. Every ggplot2 plot starts with the ggplot(data) function, by running this single function we create an empty plot. 
+
+2. We use the **plus sign** `+` to add **layers** (by choosing a *geom* (`geom_function()`) to represent our data) to our plot. Plots are built through combinations of layers.
+
+3. `mapping=aes` specifies what *aesthetics* to use for the plot. It defines the **mapping between ur data and ur plot**. Mapping means matching up a specific variable in the dataset with a specific aesthetic in the plot. *We choose what variables from our dataset to use*, they can be mapped to the axes (like in our example) and to the color, size, shape, etc.
+  
+- (Note that in the example above for the 'quartet' dataset, `aes(x, y)` is set in `ggplot()`, and it becomes the default mapping for all subsequent layers (i.e., geom_point(), geom_smooth()). Use local aes() in a specific geom if that layer needs unique mappings (eg. specific colors). This avoids repetition and ensures consistency across layers.)
+```{r}
+# Using the penguins dataset
+
+ggplot(penguins) +
+  geom_point(mapping=aes(x=flipper_length_mm,y=body_mass_g)) # Using a scatter plot (geom_point) to plot the relationship between flipper length and body mass.
+```
+
+#### More about aesthetics
+
+Rn we can't tell which data points represent which species of penguins. To solve this we can map a new variable (species) to a new aesthetic, here we've chosen color: `color=species` (changing the visual property 'color' to 'shape', 'size' or transparency 'alpha' would also work). It even automatically gives a legend. Awwww
+```{r}
+ggplot(penguins) +
+  geom_point(mapping=aes(x=flipper_length_mm,y=body_mass_g,color=species,shape=species))
+```
+
+If we don't want to map a variable to the color property but just aim to change the color overall, move the `color=` argument **outside** the `mapping=aes()` function as a separate argument of the `geom_function()`.
+```{r}
+ggplot(penguins) +
+  geom_point(mapping=aes(x=flipper_length_mm,y=body_mass_g,shape=species),color="pink")
+```
+
+#### More about geom functions
+
+We add another layer this time. 
+```{r}
+ggplot(penguins) +
+  geom_smooth(mapping=aes(x=flipper_length_mm,y=body_mass_g),color="pink") +
+  geom_point(mapping=aes(x=flipper_length_mm,y=body_mass_g,alpha=species))
+```
+
+We want to draw a separate smooth line for each species. 
+```{r}
+ggplot(penguins) +
+  geom_smooth(mapping=aes(x=flipper_length_mm,y=body_mass_g,linetype=species),color="blue")
+```
+
+`geom_jitter` also plots a scatter plot, but then it adds a small amount of random noise (on the x-axis) to each point. **Jittering** helps us deal with over-plotting, which happens when points in a plot overlap with each other.
+
+```{r}
+ggplot(penguins) +
+  geom_jitter(mapping=aes(x=flipper_length_mm,y=body_mass_g,alpha=species))
+```
+
+Now we explore bar charts using the 'diamonds' dataset. Note that we did not map a variable to the y-axis, since when we use `geom_bar` **R automatically counts how many times each x-value appears in the data**. Here, 'cut' is a variable containing *ordered factors* with 5 levels. 
+```{r}
+ggplot(diamonds) +
+  geom_bar(mapping=aes(x=cut, fill=clarity)) # When we map a *new variable* to 'fill', it will display a stacked bar chart. 
+```
+
+#### Facets, labels and annotations
+
+**Facets**: displays subsets. Two functions:
+
+- `facet_wrap` lets us create a separate plot for a single variable.
+```{r}
+ggplot(penguins) +
+  geom_point(mapping=aes(x=flipper_length_mm,y=body_mass_g,color=species)) +
+  facet_wrap(~species)
+
+ggplot(diamonds) +
+  geom_bar(mapping=aes(x=color, fill=cut)) +
+  facet_wrap(~cut)
+```
+
+The **tilde `~` symbol** appears all the time. In R, it's used as a *formula* syntax to define a relationship between **variables** (eg. y~x). See below for two variables! 
+
+
+- `facet_grid()` allows us to facet the plot with **two variables**. It splits the plot into facets vertically by values of the first variable and horizontally by values of the second variable (since it's `y~x`)
+```{r}
+ggplot(penguins) +
+  geom_point(mapping=aes(x=flipper_length_mm,y=body_mass_g,color=species)) +
+  facet_grid(sex~species)
+
+# Also applicable for a single variable as well
+ggplot(penguins) +
+  geom_point(mapping=aes(x=flipper_length_mm,y=body_mass_g,color=species)) +
+  facet_grid(~sex)
+```
+
+
+**Labels**: titles, subtitles, captions; placed **outside** of the grid.
+
+`+ labs(title="",subtitle="",caption="")`
+
+
+**Annotations**: place text **inside** the grid. So you have to specify the position within the grid.
+`+ annotate(geom, x=_, y=_, label="")`
+
+```{r}
+ggplot(penguins) +
+  geom_jitter(mapping=aes(x=flipper_length_mm,y=body_mass_g,color=species)) + 
+  labs(title="Palmer Penguins",subtitle="Body Mass vs. Flipper Length",caption="Data collected by Dr. Kristen Gorman") + 
+  annotate(geom="text", x=210, y=3900, label="The Gentoos are the largest",color="darkblue",size=5,fontface="bold",angle=25)
+
+```
+
+You can even store the plot as a variable, and add layers (also via `+`) on the variable afterwards.
+```{r}
+p <- ggplot(penguins) +
+  geom_jitter(mapping=aes(x=flipper_length_mm,y=body_mass_g,color=species)) 
+
+p + labs(title="Stored as a variable!")
+```
+
+#### Saving our viz
+
+- 'Export' option in Plots panel.
+
+- `ggsave("file_name")`: defaults to **saving the last plot** that you displayed and **uses the size of the current graphics device**.
+```{r}
+ggsave("20250422test.png")
+```
+![The output: 20250422test.png](https://img.picui.cn/free/2025/04/22/6807064da14cf.png) 
+
+Note that its size is adjusted according to the current device rather than the preview shown under each code chunk.
+
+`˖°𖥔 ݁ ˖⋅˚₊ The end!!!! ~(=^･ω･^)ﾍ >ﾟ let's go bioinformatics whoo hooo)`
