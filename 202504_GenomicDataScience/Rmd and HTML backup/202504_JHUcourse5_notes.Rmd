@@ -1,0 +1,839 @@
+---
+title: "Notes: Bioconductor for Genomic Data Science"
+author: "Kiara"
+date: "2025-04-27"
+output: html_document
+---
+
+**Course 5 -> Bioconductor for Genomic Data Science**
+
+Course link: <https://www.coursera.org/learn/bioconductor?specialization=genomic-data-science>
+
+Course GitHub page: <http://kasperdanielhansen.github.io/genbioconductor/>
+
+> `BiocManager::install("name")` to install a package inside Bioconductor!!!!
+
+## GRanges
+
+**GRanges is a data structure for storing genomic intervals in R**. The key insight is that many entities in genomics can be thought of intervals or sets of intervals (of integers). The functionality of GRanges is provided by two packages: GenomicRanges and IRanges.
+
+### IRanges
+
+The IRanges object contains integer intervals, **each called a range**. Three arguments for construction: start, end, and width (one of them can be inferred given the other two).
+```{r message=FALSE}
+library(IRanges)
+ir1 <- IRanges(start = c(1,4,5), end = c(3,5,20))
+print(ir1)
+print(class(ir1))
+# Accessing the start positions of these intervals (ranges)
+print(start(ir1))
+width(ir1) <- 1 # Note that it's an interger interval so the width of one range should be (end - start +1).
+print(ir1)
+
+# IRanges can have names like any other vector. And since IRanges is a vector-like object (tho it looks like a matrix sadly; it's 'vector'-like under the R context), they don't have a dimension but instead have a length, which is the number of ranges it has. 
+names(ir1) = paste("A", 1:3, sep='') 
+ir1
+dim(ir1)
+length(ir1) # Equal to the number of ranges
+
+ir1['A2'] # Accessing a range by its name (just like accessing an element in a vector)
+c(ir1,ir1) # Concatenating multiple IRanges, again, just like doing so to any vectors.
+```
+
+A **normal IRanges**: (easier to be understood using a plot) created by `reduce(IRanges)`, a **minimal representation** of the IRanges viewed as a set of integers, with each integer only occurring in a single range as few ranges present as possible. With this concept in mind we can more easily think of operations to multiple IRanges like `union` (equivalent to first concatenating the IRanges together and then `reduce()` that new object), `intersect`, and `setdiff`.
+
+[![normal_iranges](https://freeimghost.net/images/2025/04/27/Screenshot-2025-04-27-at-22.37.14.png)](https://kasperdanielhansen.github.io/genbioconductor/html/IRanges_Basic.html#normal-iranges)
+
+<https://kasperdanielhansen.github.io/genbioconductor/html/IRanges_Basic.html#normal-iranges>
+
+These functions (and the concept of normal IRanges; this *flattened* feeling) are very useful using eg. `sum(width(union(GRanges1, GRanges2, ignore.strand = TRUE)))` to quickly see how much the genomic entities of interest span, as demonstrated in a demo later on.
+```{r}
+ir2 <- IRanges(start = c(4,5,9,24), end = c(5,20,13,26))
+ir2
+reduce(ir2)
+ir1
+union(ir1,ir2)
+intersect(ir1,ir2)
+# How the two sets differed.
+setdiff(ir1,ir2)
+setdiff(ir2, ir1)
+```
+
+Resizing IRanges: 
+```{r}
+ir1
+resize(ir1, width = 3, fix = 'start')
+resize(ir1, width = 3, fix = 'center') # This is more useful
+```
+
+#### findOverlaps()
+
+Allow us to relate sets of IRanges to each other. (different from the `intersect` function above, which requires to think of IRanges as flattened (?) sets of integers)
+```{r}
+ir1
+ir2
+# Note that the returned 'Hits' indicate in which specific range (its index) of the two IRanges objects this overlap is found.
+findOverlaps(query = ir1, subject = ir2)
+# Counts how many overlaps found in that specific range
+countOverlaps(query = ir1, subject = ir2)
+countOverlaps(subject = ir1, query = ir2)
+nearest(ir2, subject = ir1) # Returns which ranges in the 'subject' are nearest to the corresponding ranges of the IRanges object in the first argument 
+```
+
+
+
+### GRanges and the GenomicRanges Package
+
+`GRanges()` is the GRanges constructor, which is very similar to `IRanges()`; it also has to do with chromosomes (in 'seqnames') and +/- strands ('*' means it's either unknown or the entity is on both strands).
+
+```{r message=FALSE}
+library(GenomicRanges)
+gr = GRanges(seqnames = c("chr1"), strand = c("+","-","+","*"), ranges = IRanges(start = c(1,1,5,3), width = 3))
+gr
+```
+
+*New operations* are now involved due to the opposite directions of two strands. 
+
+```{r}
+gr
+flank(gr, width = 5) # Note the difference for ranges on different strands!!
+promoters(gr) # Default is upstream 2000 bp and downstream 200 bp of our interval (our range).
+gaps(gr) # Returns all intervals not covered by our IRanges; we haven't set the length of the chromosome (the seqlengths) yet so it assumes that the end of the interval is the end of the full seq. Here we can infer that the genomic coordinates are 1-based.
+```
+
+In later demos we will retrieve GRanges after querying genes of interest from AnnotationHub. For a GRanges that contains a super large collection of ranges, we can use functions for a quick overview (but here we'll still use our `gr` to illustrate the use of these functions)
+```{r}
+summary(width(gr))
+summary(end(gr))
+# Counts occurrences of values
+table(end(gr))
+table(gr$score)
+table(table(gr$score))
+```
+
+
+
+### Seqinfo
+```{r}
+gr = GRanges(seqnames = c("chr1"), strand = c("+","-","+","*"), ranges = IRanges(start = c(1,1,5,3), width = 3))
+seqinfo(gr) # Returns a data.frame
+seqlengths(gr) = c("chr1" = 10)
+seqlevels(gr)
+seqinfo(gr)
+gaps(gr)
+
+# Here we try to change the chromosome of the GRanges. This will return an error since it has recorded there's a single chr.
+# seqnames(gr) = c("chr1","chr2","chr1","chr2")
+# So we change the seqlevels
+seqlevels(gr) = c("chr1","chr2")
+seqnames(gr) = c("chr1","chr2","chr1","chr2")
+gr
+
+# Sorting according to seqlevels
+sort(gr)
+seqlevels(gr) = c("chr2","chr1")
+sort(gr)
+```
+Setting the genome. Here we also get a copy of our current GRanges object and set that copy's genome differently. In this case, functions like `findOverlaps` won't allow us to operate since they are from **incompatible genomes**.
+```{r}
+gr2 <- gr
+genome(gr) = "hg19"
+genome(gr2) = "hg18"
+gr2
+# findOverlaps(gr,gr2) 
+# Output: '...sequences chr2, chr1 have incompatible genomes: ...'
+```
+
+#### Filtering ranges by seqname/chromosome
+
+When some of the seqlevels to drop from the GRanges are in use (i.e. have ranges on them), the ranges on these sequences need to be removed before the seqlevels can be dropped. This is called *pruning*.
+
+The 'pruning.mode' argument is "error" by default, which raises an error when we try to drop a seqlevel that is still in use.
+
+When set to "coarse", the length of the GRanges will be reduced (due to decreased number of ranges; recall, we mentioned earlier the 'vector-like' property of GRanges objects, and their 'length' is just their number of ranges). Other arguments are "fine" and "tidy".
+```{r}
+gr2 <- gr
+gr2
+# seqlevels(gr2, force = TRUE) = "chr1" this is used in the course demo but seems to be deprecated rn.
+
+seqlevels(gr2, pruning.mode="coarse") = "chr1" 
+gr2
+
+# Another way is to directly use the functions.
+gr2 <- gr
+dropSeqlevels(gr2, "chr2", pruning.mode="coarse") 
+gr2 <- gr
+# Which is just equivalent to:
+keepSeqlevels(gr2, "chr1", pruning.mode="coarse")
+# We can also drop weird-looking choromosome names, and filter only the chromosomes with standard names
+gr2 = GRanges(seqnames = c("chr1","chrIDK","chr725J"), strand = c("+","-","+"), ranges = IRanges(start = 2:4, width = 2))
+gr2
+keepStandardChromosomes(gr2, pruning.mode="coarse")
+```
+
+Different sources have different chromosome styles. To harmonize: 
+```{r}
+newStyle <- mapSeqlevels(seqnames = seqlevels(gr), style = "NCBI")
+newStyle
+gr2 <- renameSeqlevels(gr, newStyle) 
+gr2
+```
+
+### GRanges Usage
+
+#### The capital DataFrame
+
+We get an IRanges that's **a single column** so we can do the standard subsetting and use the dollar `$` operator as we are used to, and still get the expanded IRanges object.
+```{r}
+df = DataFrame(ir = ir1, score = rnorm(3))
+df
+df[1,1] 
+df$ir
+```
+
+The classic `data.frame` (lowercase), on the other hand, still returns *three different columns for IRanges* and doesn't rlly keep things together. 
+```{r}
+classic_df = data.frame(ir = ir1, score = rnorm(3))
+classic_df
+```
+
+
+#### GRanges metadata columns
+
+Additional columns to the GRanges object. We can set the 'score' metadata by `values(GRanges)` and add a DataFrame.
+```{r}
+values(gr) = DataFrame(score = rnorm(4))
+gr
+mcols(gr)
+# We (arbitrarily) set a new metadata column
+gr$score2 <- gr$score / 20
+gr
+```
+
+#### findOverlaps()
+
+Pretty similar to IRanges, tho these are **strand-specific**!! Or add `ignore.strand = TRUE`.
+
+```{r}
+gr3 = GRanges(seqnames = c("chr1"), strand = c("*","*","-","+"), ranges = IRanges(start = c(1,2,3,4), width = 3))
+gr
+gr3
+findOverlaps(gr, gr3)
+findOverlaps(gr, gr3, ignore.strand = TRUE) # This allows intervals on the positive strand to have overlaps with those on the negative strand.
+```
+
+```{r}
+subsetByOverlaps(gr, gr3)
+subsetByOverlaps(gr3, gr)
+```
+#### makeGRangesFromDataFrame()
+
+If we have classic data.frames that look like GRanges.
+```{r}
+df2 = data.frame(chr = "chr1", start = 1:3, end = 4:6, score = rnorm(3))
+makeGRangesFromDataFrame(df2) # Additional columns get dropped by default, but we can keep them using arguments.
+makeGRangesFromDataFrame(df2, keep.extra.columns = TRUE)
+```
+
+## AnnotationHub
+
+AnnotationHub is a package that acts as an **interface** to online genomic resources. You create a hub (initialize the AnnotationHub object), which is a local database of large collections of publicly available genomic datasets. You can query this local database (which is actually like subsetting in vectors by `[]`) and you can retrieve the data you want by `[[]]`.
+
+// Some of the following lines executed for too long so I annotated many of them
+```{R}
+library(AnnotationHub)
+ah = AnnotationHub()
+ah
+ah[1]
+
+# Since there's so much data we can narrow the scope down:
+# ah2 = subset(ah, species == "Homo sapiens")
+
+query(ah, pattern = "H3K4me3")
+# Or even query by a specific cell line
+q = query(ah, pattern = c("H3K4me3", "Gm12878"))
+# The 'snapshotDate' actually matches the version of Bioconductor we are using
+
+# Retrieving the GRanges object of interest
+# genes = ah[["AH23324"]]
+
+# display(ah) doesn't work... the function could not be found. deprecated i guess,,, so sad..
+# This function is supposed to allow us to use AnnotationHub with a spreadsheet-like interface. We assign the return value to a new variable because we can then go to the spreadsheet-like interface and manually select the records to send them back into R. 
+#ah_selected = display(ah) # The spreadsheet-like interface opens up, and then we can search and select the records of interest...
+
+```
+
+The demo features querying and then retrieving data from AnnotationHub. After the genomic data of interest (namely, H3K4me3 peaks and RefSeq data (non-redundant!) in the human genome) is retrieved (**as GRanges objects**), we can use the functions learned above to carry out analysis (Fisher's exact test) to see whether **trimethylation (H3K4me3) is enriched in promoter regions** (apply the `promoters()` function we illustrated earlier to extract the GRanges for only promoters from the entire RefSeq genomic data). Apply `findOverlaps`, `intersect`, etc. 
+
+// This is so very upsetting but for the first time after so long i felt like my cnbo memories for molecular biology got back T_T.
+
+## Biostrings and BSgenome
+
+### Basic intro to the two packages
+
+**Biostrings**: a package that contains functionality for representing and manipulating biological strings and biodata. 
+
+- There's also a DNAStringSet (like a list with each element being a DNAString), each DNAString doesn't have to have the same width, but they have to only contain characters in the IUPAC code.
+
+```{r}
+library(Biostrings)
+dna1 = DNAString("ACGT-G")
+dna1[2:4]
+
+dna_set = DNAStringSet(c("ACG", "ACTGTGTG", "GTAC"))
+dna_set
+IUPAC_CODE_MAP
+dna_set[2] # Still a DNAStringSet object (like a list with length 1)
+dna_set[[2]] # A DNAString object
+
+names(dna_set) = paste0('seq',1:3)
+sort(dna_set)
+```
+
+```{r}
+# Reversion: this only means reverse in ordering; use the second function to find the sequence's reverse complement. 
+reverse(dna_set)
+reverseComplement(dna_set)
+rev(dna1)
+
+alphabetFrequency(dna_set)
+letterFrequency(dna_set, letters="GC") # default is OR (`|`)
+dinucleotideFrequency((dna_set))
+# consensusMatrix: tells us how many elements/strings have a specific nucleotide of that position. See how it differed to alphabetFrequency()!
+consensusMatrix(dna_set)
+```
+
+**BSgenome**: a package for dealing with and representing **full genomes**. 
+```{r}
+library(BSgenome)
+available.genomes() # Lists all the genomes that you can directly download from the Bioconductor website.
+library("BSgenome.Scerevisiae.UCSC.sacCer2") # Install the package first using BiocManager.
+# When we load a genome package, we get a BSgenome object back that's the name of the species. 
+Scerevisiae
+seqinfo(Scerevisiae)
+# Use the '$' or '[[]]' operator to access a given sequence (chromosome)
+Scerevisiae$chrI # So this returns a DNAString object, to which we can apply the DNAString functions learned previously
+letterFrequency(Scerevisiae$chrI, "GC", as.prob = TRUE)
+
+```
+We might also want to calculate the GC content for every sequence (every DNAString object) in the full genome (the BSgenome object). We can do something similar to `lapply` using the function `bsapply`.
+
+- `bsapply` is slightly different because behind the scenes when you run it, it'll load and unload the different genomes as we need them. 
+
+- We start off by setting up a new BSParams object, which **contains the function we're going to apply and the BSgenome object we're going to apply it to**. Then we can just run `bsapply` on the BSParams object.
+```{r}
+param = new(Class = "BSParams", X = Scerevisiae, FUN = letterFrequency)
+bsapply(param, "GC", as.prob = TRUE)
+sum(unlist(bsapply(param, "GC"))) / sum(seqlengths(Scerevisiae))
+```
+
+### Biostrings: matching
+```{r}
+# Matching a sequence against another sequence (matching two DNAString objects), returns a Views object
+dna2 <- DNAString("ACGGGCAG")
+matchPattern(pattern = dna2, subject = Scerevisiae$chrI)
+countPattern(pattern = dna2, subject = Scerevisiae$chrI)
+
+# Matching a sequence against a set of chromosomes/sequences, returns a GRanges object
+vmatchPattern(pattern = dna2, Scerevisiae)
+```
+**Other matching functions**:
+
+- `matchPdict()` for finding all the matches of a set of patterns ('dictionary', built by taking in **a set of short reads** of the same length) in a reference sequence or set of reference sequences (the subject; the full genome).
+
+- `matchPWM()` allows us to search the genome for eg. binding motifs for given transcription factors. PWM stands for position weight matrix, a probabilistic representation; using a PWM, any given sequence can be quantitatively scored against the motif model
+
+- `pairwiseAlignment()` allows to map *millions of reads* against **a short sequence such as a gene**. It's impossible to use global/local alignment when you map up against the entire genome, but very useful as long as you align them up to a very small section of the genome eg. just a gene. 
+
+`TrimLRPatterns()`: trims off specific patterns on the left and the right of a DNAStringSet
+
+### The Views object
+
+Pretty much like merging an IRanges (not a GRanges since no seqinfo) and a DNAStringSet object. **We can run the functions for a DNAStringSet on Views** eg. `alphabetFrequency()`, etc.
+```{r}
+vi <- matchPattern(pattern = dna2, subject = Scerevisiae$chrI)
+vi
+ranges(vi)
+alphabetFrequency(vi)
+```
+Views are very powerful in representing short sequences **of a bigger object**. All we need to stall is coordinates rather than the actual sequence. So, a View basically consists of a a set of coordinates **plus an object they link onto**. This means we can do things like *shifting the View (on the bigger object)*.
+```{r}
+shift(vi, 10)
+
+gr4 = vmatchPattern(pattern = dna2, Scerevisiae)
+# We can create a Views like this: (remember? A Views is just like IRanges + DNAStringSet so we include the full genome (obtained as a BSgenome object; $each_chr is a DNAString) in the first argument to provide DNAString data)
+gr4
+vi2 = Views(Scerevisiae, gr4)
+# Note the additional column for DNAStringSet
+vi2 
+```
+
+Recall that we've previously retrieved a GRanges object for H3g4me3 peaks in humans when learning AnnotationHub. Here we will use the same AnnotationHub object initialized earlier to query and retrieve the yeast *genes* (distinguish this GRanges from the 'full genome' BSgenome object!) and get their promoters, **and then use the DNAStringSet functions by leveraging the Views object**. 
+```{r}
+query(ah, c("sacCer2", "genes"))
+```
+```{r}
+yeast_genes = ah[["AH7048"]]
+promoters = promoters(yeast_genes)
+```
+We can view the 'promoters' GRanges to see why there's this warning of 'out-of-bound ranges': many of the ranges are negative (invalid coordinates). In this case, we can just `trim` anything outside the sequence length of the genome.
+```{r}
+promoters
+promoters = trim(promoters)
+promViews = Views(Scerevisiae, promoters)
+promViews
+
+# Then we use a DNAStringSet function to find the GC content specifically for promoter regions. 
+promGC = letterFrequency(promViews, "GC", as.prob = TRUE) # This will return probabilities for all of the 6717 ranges,,,, so we can visualize the overall GC content by plotting the density!!!
+plot(density(promGC)) # The center is almost at 0.38, which is similar to our previously-calculated GC content for yeast's full genome. 
+```
+
+### GenomicRanges: Rle (run-length-encoded) vectors
+
+An Rle vector is a *compressed* representation of a very long vector (especially if there are multiple consecutive elements with the same value, like where the signal is *only non-zero in a small part of the genome*, eg. in ChIPSeq).  This class is great for representing genome-wide sequence coverage (i.e. the number of reads overlapping each base)
+```{r}
+rl <- Rle(c(1,1,1,1,2,2,3,3,2,2))
+rl
+runLength(rl)
+runValue(rl)
+num_vec = as.numeric(rl)
+```
+```{r}
+# aggregate(): calculate across **a set of pre-specified genomic ranges** (by the IRanges) on a coverage vector (the Rle vector). 
+ir3 <- IRanges(start = c(3,4,6), width = 3)
+ir3
+aggregate(rl, ir3, FUN = mean)
+# The first element of this output is equivalent to: (remember the first range in the IRanges ir1 is just 3-5)
+mean(num_vec[3:5])
+# The second line is the same, etc.
+mean(num_vec[4:6])
+
+# We can also convert an IRanges to a Rle by the coverage() function. This counts, for each integer, **how many** ranges overlap the integer.
+rl2 <- coverage(ir3) 
+rl2 
+as.numeric(rl2)
+
+# We can select high coverage regions by:
+slice(rl2, 2)
+
+```
+We mentioned how this vector representation is very useful when we have an extremely long genomic sequence. We can instantiate a Views, but in a Rle instead of in the full genome (which we did before with the yeast genome).
+```{r}
+vi3 = Views(subject = rl, ir3)
+vi3
+# with Views you can now (again) apply functions, which is very similar to using aggregate()
+mean(vi3)
+```
+
+We can do basically the same things for GRanges just like what we did on IRanges. Constructing Rle from GRanges often involves RleList where each element of the list is a chromosome.
+
+```{r}
+gr
+rl3 <- coverage(gr)
+rl3
+vi4 = Views(rl3, GRanges(c("chr2","chr1"), ranges = IRanges(start = 2:3, end = 4:5)))
+vi4
+```
+
+We don't just have Rle vectors of integers. We can also have those of logicals, or even characters. In fact, if we look at a GRanges... 
+```{r}
+gr
+```
+...we can immediately spot that columns like `GRanges$seqnames` and `GRanges$strands` are Rle-typed. This is because, say, we often have all the ranges in chr1 *next to each other*, tho the `gr` used here for illustration doesn't. I prob just created it randomly.
+
+### GenomicRanges: _Lists
+
+We've already come across these xxLists (where 'xx' is some class) earlier, like 'RleList'. They're basically similar to a normal list in R.
+
+I was reading the [lecture notes](http://kasperdanielhansen.github.io/genbioconductor/html/GenomicRanges_Lists.html) provided by the lecturer and this is just soo extremely funny lolol: 
+![blinded by the insight](https://freeimghost.net/images/2025/04/28/Screenshot-2025-04-28-at-19.57.08.png)
+
+#### GRangesList
+
+An important usecase specifically for GRangesList is the representation of a set of transcripts. Each transcript is an element in the GRangesList and the exons of the transcript is represented as a GRanges (in which each exon is a range).
+```{r}
+gL <- GRangesList(gr1 = gr, gr2 = gr3)
+gL
+
+# A number of standard GRanges functions work, but returns other_classLists
+start(gL)
+seqnames(gL)
+# elementLengths(gL) # This is equivalent to sapply(gL, length) which is slow in comparison; raises an error: Error in elementLengths(gL) : could not find function "elementLengths"
+shift(gL, 10)
+```
+`findOverlaps` for GRangesLists considers each element as a union of ranges, so we get an overlap if *any range in the list* overlaps, but the 'Hits' returned (see below, only 1 and 2) are only the indices for the GRangesLists elements. 
+```{r}
+findOverlaps(gL, gr3)
+```
+### GenomicFeatures and TxDb
+
+The GenomicFeatures package contains functionality for **transcript database or TxDb objects**. 'tx' under this context all refers to transcript.
+
+#### TxDb objects
+
+Extract basic quantities: `genes()`, `transcripts()`, `cds()`, `exons()`, `microRNAs()`, `tRNAs()`, `promoters()`. We can extract quantities and groups by using `_By()` functions eg. `transcriptsBy(by = c("gene", "exon", "cds"))`
+```{r}
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
+txdb
+genes(txdb)
+gr <- GRanges(seqnames = "chr1", strand = "+", ranges = IRanges(start = 11874, end = 14409))
+subsetByOverlaps(exons(txdb), gr)
+# Recall that GRangesList effectively represents a set of transcripts
+subsetByOverlaps(exonsBy(txdb, by = "tx"), gr)
+```
+### rtracklayer and importing data
+
+The rtracklayer package contains functions for **importing and exporting data** to (UCSC) Genome Browser. This includes functionality for parsing file formats associated with the browser such as BED, Wig, BigBed and BigWig. 
+
+A Wig file is a representation of signals/numeric quantity along the genome. BigWig contains a single vector across the entire genome, but it's compressed and easy to extract the values for a given region. One way to get a BigWig file is by using AnnotationHub. 
+
+It took too long, so i won't run it again...
+``` R
+table(ah$rdataclass)
+# For those that `rdataclass == "GRanges"`, they are usually directly constructed from BED files with the seqinfo information fully populated.
+# But we'll look at BigWig files rn.
+ah.bw <- subset(ah, rdataclass == "BigWigFile" & species == "Homo sapiens")
+ah.bw
+bw <- ah.bw[[1]]
+bw
+```
+
+When we retrieve it we get a file name, **ready for use by `import()` to read the data into our memory**. The `format` argument specifies the format type ("BigWig" or "BED") and `which` is like filtering the BigWig by a specified GRanges. The output data type is a GRanges per default, but using the `as` argument we can have as="Rle" and a few other options.
+
+The `import` failed when I was actually running the former code chunk and this one: "UCSC library operation failed."
+
+``` R
+gr.chr22 = import(bw, which=GRanges("chr22", ranges=IRanges(1,10^8)))
+gr.chr22
+gr.rle = import(bw, which=GRanges("chr22", ranges=IRanges(1,10^8)), as="Rle")
+```
+
+`liftOver()` function in the rtracklayer package allows us to convert between different genomes (eg. hg19 <-> hg18). We'll need the 'chain' file describing the conversion.
+```R
+ah.chain <- subset(ah, rdataclass == "ChainFile" & species == "Homo sapiens")
+query(ah.chain, c("hg18", "hg19"))
+chain <- ah.chain[ah.chain$title == "hg19ToHg18.over.chain.gz"]
+chain <- chain["hg19ToHg18.over.chain.gz"]
+gr.hg18 <- liftOver(gr, chain)
+gr.hg18
+```
+This converts a GRanges into a GRangesList because a single range may be split into multiple intervals in the other genome. 
+
+## Representing data in Bioconductor
+
+- **Basic data types: experimental data, metadata, annotation**.
+
+  - Annotating is the process of giving context to experimental data using external information, usually thought as linking our experimental data to various online databases.
+
+- Raw data (unprocessed) -> pre-processed data -> results through statistical analysis.
+
+**Data container**: after we obtained raw data from various means, we preprocess it according to the specific way it was obtained (eg. the sequencing technology/instrument). Then we put the pre-processed data into a common data container, which would make analysis a lot easier. 
+
+### ExpressionSet
+
+One of the most important data containers in Bioconductor for representing an expression experiment (eg. RNA-seq). In context of the 'basic data types':
+
+  - We think of the **expression matrix** as really *raw experimental data* (note that, the representation of this matrix is very different (feels like it's transposed) from other tabular data like design matrices), the **phenotype data** and the **feature data** are *metadata* on the experiment. All these three dataframes or matrices fit together into something we call an ExpressionSet (**these are the *three essential matrices* in bioinformatics**). When we have multiple expression matrices, it's called an **eSet**. This can be useful for representing experiments where there are multiple channels, etc. 
+  
+[![An ExperimentSet](https://freeimghost.net/images/2025/04/28/Screenshot-2025-04-29-at-09.27.28.png)](http://kasperdanielhansen.github.io/genbioconductor/pdf/BiocIntro_ExpressionSet_Overview.pdf)
+
+An example of an ExpressionSet object is the `ALL` **experiment package** that **contains a dataset for an experiment**, accessed by `data(ALL)` after it's imported. The core of the ExpressionSet object are two matrices:
+
+- The `exprs` matrix (the expression matrix) containing the 12625 gene expression measurements on the 128 samples (a 12625 by 128 numeric matrix). To subset, simply use `exprs(ALL)[1:4, 1:4]`. 
+
+  - Note that if you subset the *ExperimentSet* itself rather than the expression *matrix* via `ALL[1:4, 1:4]`, it will still return an ExperimentSet object. 
+  
+- The `pData` data.frame containing *phenotype data* on the samples. Similar to any other data.frame, we can access individual columns of the `pData` df using the `$` operator. Alongside phenotype data (which is info on the samples), we can also access the feature data (info on the features/genes).
+
+### SummarizedExperiment
+
+A SummarizedExperiment object (from the GenomicRanges package) is an extension of the ExpressionSet class (so still a data container with very similar representations) to include GRanges. Recall after querying and accessing data from TCGA, the returned RangedSummarizedExperiemnt object was just similar to one of these, where we extracted the counts and TPM data!!!
+
+Similar to the `ALL` dataset for an ExperimentSet, for illustration here we use another example dataset for an RNA-seq experiment stored in the `airway` package. 
+
+
+- **Metadata: `colData` contains phenotype (sample) information, like `pData` for ExpressionSet. It returns a capital DataFrame instead of a classical data.frame. `rowData` contains info about features eg. genes.**
+
+- The measurement matrices (basically the same as expression matrices but broader) are accessed by `assay` and `assays`. A SummarizedExperiment can contain multiple measurement matrices (all of the same dimension). We get all of them by `assays` and a single one by `assay(object, assay_name)` where we can see the names after printing the object or by using `assayNames`.
+
+```{r message=FALSE}
+library(GenomicRanges)
+library(airway)
+data(airway)
+airway
+rowData(airway)
+assays(airway)
+head(assay(airway, "counts"))
+```
+
+The new thing is that SummarizedExperiment allows for the `rowRanges` (or accessed by `GRanges`) data representing the different features. It returns a GRangesList, with **every element of the list (a GRanges object) being a feature (a gene) and every range inside the feature being an exon)**.
+
+Since these are (or contain) GRanges we can basically do all the corresponding operations on them.
+```{r}
+rowRanges(airway)
+start(airway)
+gr <- GRanges(seqnames = "1", ranges = IRanges(start = 1, end = 10^7))
+subsetByOverlaps(airway, gr)
+```
+
+### GEOquery
+
+NCBI Gene Expression Omnibus (GEO) is organised as **samples which are grouped into series**. For bigger experiments there are both SubSeries and SuperSeries. A SuperSeries is all the experiments for a single paper; a SuperSeries can be decomposed into SubSeries which are *different technologies*. 
+
+Data submitted to GEO can be both “raw” and “processed”. 
+
+- For gene expression data, **processed** data is normalized and quantified, typically at the gene level, and is usually provided in the form of a gene by sample matrix. 
+
+- **Raw** data can be anything, from sequencing reads to microarray image files, eg. for a RNA-seq dataset you may even have *different states* of "raw" data: FASTQ files (raw reads), BAM files (aligned reads), gene by sample expression matrix (unnormalized) and gene by sample expression matrix (normalized).
+
+GEO has series identifiers (like GSE19486, aka accession number) and sample identiers (GSM486297). A user is almost always interested in all the samples in a given series, so we start by downloading data from GEO using an accession number.
+
+This runs for too long... shouldn't let it knit
+```R
+library(GEOquery)
+eList <- getGEO("GSE11675")
+class(eList) # It returns a list since we might get multiple SubSeries where each element is an ExpressionSet. 
+eData <- eList[[1]]
+eData
+```
+
+However, what we got here (by `getGEO(GEO_accession_number)`) was processed data. Users often want access to more raw data. This is called “*supplementary files*” in GEO terms and `getGEOSuppFiles(GEO_accession_number)` goes online and gets it for us. 
+
+### biomaRt
+
+“Biomart” is a flexible **interface** to a biological database (kinda like AnnotationHub) and then to multiple datasets inside the database (aka the **mart**).
+
+There is one main function for **querying** in the package biomaRt: `getBM()` (get Biomart). It retrives data from a Biomart based on this query, which consists of 3 things: “attributes" (eg. gene names), “filters” and “values” (actual values of the assigned "filters"). A major part of using biomaRt is figuring out which attributes and which filters to use. We can get a description of this using `listAttributes()` and `listFilters()`.
+
+### The S4 System
+
+NOTE THAT in R, **S4 classes and S4 methods are completely separated concepts** unlike the relationship between methods and classes in other object-oriented programming languages (eg. Java and Python).
+
+S3, S4, S5, etc. are just multiple object-oriented programming (OOP) systems that we can choose from in R.
+
+#### S4 classes
+
+S4 classes provides a way of representing complicated data structures that also link between different data structures. We have used this a lot already, eg. ExpressionSets and SummarizedExperiments. 
+
+In Base R (which mainly uses *the S3 system*), we can make any object into any class. However, an S3 object is essentially a list **with a class attribute on it** (`class()` for getting/setting), which means **we can assign any class to any list, which is nonsense**.
+
+S4 classes have a formal definition and formal validity checking. To the end user, this guarantees **validity of the object** instead of some weird nonsense list that does not look like other objects of the same class at all (as in S3).
+
+```{r}
+class(airway)
+isS4(airway)
+# Get help (also returns the help page for the constructor function since their names are the same)
+?SummarizedExperiment
+class?SummarizedExperiment
+getClass("SummarizedExperiment")
+```
+**Data inside an S4 class are organized into slots. We access slots by using either ‘@’ or the `slots()`**. Although the `@` operation is the way to access (and extract) data in the course I was having to deal with TCGA, it is recommended that as a user we should use the accessor functions eg. `assays(airway)` rather than directly accessing like `airway@assays`.
+```{r}
+airway@assays
+assays(airway)
+head(assay(airway, "counts")) # recall, assay(object, "name")
+```
+
+Class inheritance is used when you define a new class which “is almost like this other class but with a little twist”. Eg. ExpressionSet inherits from eSet (it "twists" by adding a single `exprs()` accessor function for the `@experimentData` slot in the class), and RangedSummarizedExperiment inherits from SummarizedExperiment (as shown under "Known Subclasses" above).
+
+
+#### S4 methods
+
+We can think of a S4 method as a simple function but **can look at its arguments and decide what to do accordingly**. One way to mimic a method is by a function definition like the following:
+
+```{r}
+mimicMethod <- function(x) {
+    if (is(x, "matrix"))
+        method1(x)
+    if (is(x, "data.frame"))
+        method2(x)
+    if (is(x, "IRanges"))
+        method3(x)
+}
+```
+
+Eg. `as.data.frame` redefined from the BiocGenerics package:
+```{r}
+base::as.data.frame # The original Base R function rather than the redirected/masked one.
+showMethods("as.data.frame") # Shows the different values of input it can take, called "signatures"
+getMethod(f = "as.data.frame", signature = "DataFrame") # Shows the actual method for the specified input type/signature
+```
+
+## Getting data into Bioconductor
+
+We've seen these convenient data containers like SummarizedExperiment, but how do we actually get our data in there? 
+
+The answer really depends on the file format...
+
+> Bioinformatics has jokingly been referred to as “The Science of Inventing New File Formats”.
+
+### ShortRead
+
+A package that contains functionality for reading and examining raw sequence reads (typically in FASTQ format). One of the first Bioconductor packages to deal with *low-level* analysis of high-throughput sequencing data. 
+
+`readFastq()` returns a ShortReadQ object. The `ShortReadQ` class is very similar to a DNAStringSet but it has two sets of strings: **one for the read nucleotides and one for the base qualities**.
+
+- ShortRead helps convert the quality scores (i.e. the fourth line of the FASTQ format) to the corresponding integer by eg. `as(quality(reads), "matrix")[1:2,1:10]`. Recall this `as(object, Class)` versatile conversion function from the methods package!
+
+#### Rsamtools
+
+Recall what we've learned from Course 4!! SAM/BAM formats represent the reads after they are aligned to the reference genome. 
+
+A BAM file can be sorted in multiple ways; if it is sorted according to genomic location, and then if it is also “indexed”, it is possible (and can be very useful) to retrieve all reads mapping to a genomic location. In Rsamtools this is done by the functions `sortBam()` and `indexBam()`.
+
+To read a BAM file, **we must first set up a `BamFile` object to create a pointer to the file**. Then we read the reads using `scanBam()`. 
+
+- We can use `yieldSize(BamFile_object) <- number` to specify the number of alignments per `scanBam()`. 
+
+- We can also use `ScanBamParams()` to select certain reads based on the `which` argument for specified genomic regions (via specifying GRanges) and the `what` argument.
+
+
+### Quick skim: microarray data
+
+![Screenshot from course Github page](https://freeimghost.net/images/2025/04/30/Screenshot-2025-04-30-at-16.57.14.png)
+
+I also skipped the two lectures on oligo and minfi T_T.
+
+### Differential analysis
+
+The most common **design** for this is a two-group (case and control) design with unpaired samples. We want to discover which genes are differentially expressed between these two groups. 
+
+We have a rectangular matrix with samples on columns and features on rows. This is exactly the data structure represented by an ExpressionSet or a SummarizedExperiment. A number of different packages allows us to **fit common types of models for differential analysis** to this data structure: 
+
+- `limma` (mainly for microarrays) fits linear models (eg.  linear regression).
+
+- `edgeR`, `DESeq` and `DESeq2` fit generalized linear models (GLMs) based on the negative binomial distribution for raw counts data from RNA-seq.
+
+- A common `limma` (and friends) **workflow** includes:
+  
+  - Defining the design matrix, which encompasses everything we know about the design; in this case there are the two groups. 
+  
+  - The model is then fitted. This is followed by borrowing strength across genes using the empirical Bayes procedure.
+  
+  - **The `topTable()` function outputs the top differentially expressed genes**. In a more complicated design, the topTable() function would need to be told which comparison of interest to summarize.
+
+The primary part of the output is **logFC**: the log fold-change. To interpret the sign of this quantity (to see whether the gene that is shown to have a positive value is up-regulated in the control or the reverse) we have to specify the **reference level**, which is the first level of the factor that we'll see below. 
+
+Note that in microarrays, data (when we access it using `exprs()` in an ExperimentSet; processed) is usually already log-transformed. logFC is actually just doing a *subtraction* between the *log-transformed* values in the two groups.
+
+
+#### Borrowing information across genes
+
+This is an important statistical strategy in genomics, specifically in studies with small sample sizes. **In most gene expression datasets, we have far fewer samples than we have features/genes**. 
+
+- **Genes in an organism often share similar statistical properties.**
+
+- These packages (eg. `limma` uses empirical Bayes which assumes a prior distribution for variances estimated from all genes) leverage such genome-wide patterns to stabilize parameter estimates and improve inferences. This 'borrowing' is embedded in the model-fitting process.
+
+After this 'borrowing', the calculated test statistics are called '**moderated**', which is why in Course 6 (part 2 notes) when we plot the t-stats calculated by `limma` after model fitting (moderated) and by the simple `genefilter`, they are a bit different.
+
+#### An example two-group comparison using limma
+
+```{r}
+library(leukemiasEset)
+data(leukemiasEset)
+leukemiasEset
+
+table(leukemiasEset$LeukemiaType)
+# We only extract data for the ALL type and normal controls (NoL, 'not leukemia')
+ourData <- leukemiasEset[, leukemiasEset$LeukemiaType %in% c("ALL", "NoL")]
+ourData$LeukemiaType <- factor(ourData$LeukemiaType) # So ALL (which is the first level) is our reference level -> the level for control group. Positive values in the logFC output means the corresponding genes **are up-regulated in the experimental group, compared to the control group**.
+ourData$LeukemiaType
+
+design <- model.matrix(~ ourData$LeukemiaType) # Recall that this sets 'ourData$LeukemiaType' as the variable!
+design
+```
+Let's look at the design matrix where each record is a sample. Here, the 0s and 1s in the two fields are simply labels/binary indicators which group each sample belongs to. The actual difference values are calculated by the **linear model's coefficients, not the design matrix itself**!!!!
+
+- The 'intercept' (β0) represents the **average gene expression for a given gene across all ALL samples (baseline expression of the reference group)**, and β1 is the **difference in expression level** from the NoL group to the ALL group. If a gene isn't differentially expressed, this would be 0.
+
+And then we do a limma model fit. It's still so simple and similar to fitting a ML model in sklearn, since all we have to do is just apply the function...
+```{r}
+library(limma)
+fit <- lmFit(ourData, design)
+fit <- eBayes(fit)
+topTable(fit) # Other fields include the t-statistic and the p-value, etc. 
+```
+
+#### Simplified RNA-seq differential analysis workflow
+
+We'll still use the airway dataset, in which data is stored as a SummarizedExperiment object. 
+
+The main variable of interest here is dex which takes on levels trt (treated) and untrt (untreated). We use `relevel()` to set the untrt level as reference (i.e. control group) since this is much easier to interpret gene up/down-regulation.
+```{r}
+airway
+head(assay(airway))
+
+airway$dex
+
+airway$dex <- relevel(airway$dex, "untrt")
+airway$dex
+```
+
+We will use **edgeR** and **DESeq2** packages to run the differential analysis separately. Both require us to **first put the data into a data container** since they do not directly work with a SummarizedExperiment object. For 
+
+**DESeq2**: much simpler than in edgeR. 
+```{r}
+library(airway)
+data(airway)
+library(DESeq2)
+# Puts the data into a DESeqDataSet container
+setOldClass("ExpData") # to circumvent the very recent error... the error wasn't there when I was still taking the course but it can't properly execute and knit anymore in May
+dds <- DESeqDataSet(airway, design = ~ dex)
+
+# Extremely simple fitting
+dds <- DESeq(dds)
+
+# Get the results (even simpler,,,)
+res <- results(dds)
+# Note that the results aren't ordered so we do that according to the adjusted p-value. 
+res <- res[order(res$padj),]
+res
+```
+
+---
+
+**edgeR**: so complex.
+
+```{r}
+library(edgeR)
+# Also puts into a container, tho this one is much less efficient
+dge <- DGEList(counts = assay(airway, "counts"),
+               group = airway$dex)
+```
+
+Then we proceed as follows... O_O
+```{r}
+# $samples (the phenotype data) can't be readily set when we create the DGEList object,,
+dge$samples <- merge(dge$samples,
+                     as.data.frame(colData(airway)),
+                     by = 0)
+dge$genes <- data.frame(name = names(rowRanges(airway)),
+                        stringsAsFactors = FALSE)
+
+dge <- calcNormFactors(dge)
+
+# We set up the design matrix and estimate the dispersion (variance).
+design <- model.matrix(~dge$samples$group)
+dge <- estimateGLMCommonDisp(dge, design)
+dge <- estimateGLMTagwiseDisp(dge, design)
+
+# Now we do the fit, similar to limma
+fit <- glmFit(dge, design)
+
+# After model fitting... test time! 
+# The description of the function is: "Given gene-wise generalized linear model fits, conduct **likelihood ratio tests** for a given coefficient or coefficient contrast."
+lrt <- glmLRT(fit, coef = 2)
+topTags(lrt) # Extract the top hits
+```
+
+i want to see how the top differentially expressed genes found by the two methods overlapped :O
+```{r}
+# rownames(head(res, n=10))
+# rownames(topTags(lrt))
+
+intersect(rownames(head(res)), rownames(topTags(lrt)))
+```
+
+ok cool only three,,, 

@@ -1,0 +1,525 @@
+---
+title: "Notes: Statistics for Genomic Data Science (1)"
+author: "Kiara"
+date: "2025-05-01"
+output: md_document
+---
+
+Course link: <https://www.coursera.org/learn/statistical-genomics?specialization=genomic-data-science>
+
+## Getting started...
+
+#### Experimental design
+
+- Replicates:
+
+  - Technical replicates: same sample, but the exact same technical processing is repeated for separate times. You can have different kinds of these since the processes contain multiple steps. Accounts for variability due to measurements.
+
+  - Biological replicates: different people/organisms/samples taken from different tissues. Accounts for natural biological variability.
+
+- Power: the likelihood of correctly rejecting the null hypothesis (1 - likelihood of Type II error/false negative).
+
+  - Typically set at 80%, which helps determine sample size to use.
+
+  - Calculations are based on made-up assumptions. 
+  
+- Confounding and randomization.
+
+
+### Exploratory analysis
+
+Simply means exploring the data when you first accessed a dataset. 
+
+- `table()` is a useful way for checking data in the **three tables (phenotype data, expression data, and feature data**; extracted using the commands learned in Course 5 for the corresponding type of data container).
+  
+- `summary()` to show the statistics. 
+
+- Check missing values: `is.na`, eg. `sum(is.na(edata))`
+
+  - Include NA in table: `table(pdata$age,useNA="ifany")`
+  
+- Check dimensions of the three tables by `dim()`.
+
+After we've gone through the variables and checked eg. no missing values and all the dimensions match up, we can start plotting: this is considered the best and most widely used way to do exploratory analysis.
+
+#### Plotting
+
+
+```{r}
+library(Biobase)
+# Load dataset
+con = url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bodymap_eset.RData")
+load(file=con)
+close(con)
+bm = bodymap.eset
+pdata=pData(bm)
+edata=exprs(bm)
+fdata = fData(bm)
+
+summary(edata) # Very skewed since apparently most genes aren't housekeeping and have very low expression levels. 
+
+boxplot(edata) # Skewed indeed, most of the data points are down at 0.
+# So we would want to take the log transform of the data. Again, plus one due to the presence of the 0 values.
+boxplot(log2(edata+1),range=0)
+
+# Plot two histograms side by side: split up the screen so that it has one row and two columns of plots.
+par(mfrow=c(1,2)) # par(): used to set or query graphical parameters
+hist(log2(edata[,1]+1),col=4) 
+hist(log2(edata[,2]+1),col=2)
+```
+```{r}
+# Density plot: similar to a histogram but a line graph
+par(mfrow=c(1,1))
+plot(density(log2(edata[,1]+1)),col=4) # Calculate the density first
+lines(density(log2(edata[,2]+1)),col=2) # Overlay the other line rather than overwriting the entire plot
+
+# This overlay allows us to check whether the distributions of samples are similar.
+```
+
+#### Q-Q plot
+
+Another way to compare the distribution between two samples is by plotting a Q-Q plot (**quantile–quantile plot**, tho Q-Q looks like a kaomoji...): *a point (x, y) on the plot corresponds to one of the quantiles of the second distribution plotted against the same quantile of the first distribution*. 
+
+- If the two distributions being compared are similar, the points in the Q–Q plot will approximately lie on the identity line y = x. So we plot this line as well by the `abline()` function.
+
+```{r q-q plot!!}
+qqplot(log2(edata[,1]+1),log2(edata[,2]+1),col=3)
+abline(c(0,1)) # y = ax + b; note that the intercept (b) is the first argument and the slope (a) is the second
+```
+
+#### MA plot
+
+An application of a Bland-Altman plot for visual representation of genomic data. The plot visualizes the differences between measurements taken in two samples, by transforming the data onto **M (log ratio) and A (average expression, since it's obtained by averaging the two log-transformed values)** scales to see if there are any intensity-specific biases.
+
+Its original application was for microarray data, where an underlying assumption is that *most of the genes would not see any change in their expression (not differentially expressed); therefore, the majority of the points on the y-axis (M, which just represents `logFC`) would be located at 0*, since log(1) is 0. If this is not the case, then a **normalization** method should be applied to the data before statistical analysis. Likewise, this can be used to compare data from eg. two replicates, etc. 
+
+
+```{r MA plot!!}
+mm = log2(edata[,1]+1) - log2(edata[,2]+1)
+aa = log2(edata[,1]+1) + log2(edata[,2]+1)
+plot(aa,mm,col=4)
+```
+
+There is a fan-like triangular pattern on the left. This occurs because: for a gene if the expression in one sample is near-zero but not in the other sample, which means either `log2(edata[,1]+1)` or `log2(edata[,2]+1)` ≈ 0, we get `mm ≈ -aa` or `mm ≈ aa`, and thus these points cluster on these two lines. 
+
+#### Data filtering
+
+We can filter out these features (genes) with a low expression to get an idea of what the actual distribution looks like. We **convert the dataset into a data.frame to apply the `filter()` function** from the dplyr package and only keep the rows that have a mean expression level greater than 1.
+```{r}
+edata = as.data.frame(edata)
+filt_edata = filter(edata,rowMeans(edata) > 1) # Now reduced from 52580 rows to only 12276
+boxplot(as.matrix(log2(filt_edata+1)),col=4) # And the box plot looks much better (note that we have to transform the data.frame back to a matrix to do the plotting!!) 
+```
+
+For this filtering step, especially when dealing with genomic data, note that **sometimes the median is more robust than the mean** (so use `rowMedians` to filter rather than `rowMeans`) since while the vast majority of values are near-zero there might be some gigantic values (recall the maximum value from the `summary()` we did above!!) that affect the mean but not the median.
+
+
+#### Data consistency check
+
+In the third part of the exploration of a dataset, we can check for consistency using some kind of external data available, such as chromosomal information from another dataset (matched using ENSEMBL IDs) to eg. make sure that the men and women are correctly labeled in our current data by looking at expression on the Y chromosome. Again we can generate a box plot for both genders to compare this expression. `boxplot(colSums(edata_y) ~ pdata$gender)`.
+
+We might also want to visualize the expression matrix, which can be done by creating a heat map (since it's a multivariate plot). **Here's another way to filter the features**, again only keeping the genes whose expression levels are high enough.
+```{r}
+ematrix = as.matrix(edata)[rowMeans(edata) > 30000,]
+heatmap(ematrix)
+# We can turn off the automatic clustering by adding the  `Rowv=NA` and `Colv=NA` arguments in the heatmap() function.
+```
+
+#### Reminder on the plot() function
+
+From the previous code chunks we used the `plot()` function to output a line graph and a scatter plot, without explicitly setting any arguments like `type = 'l'`. So I got a bit confused,,,, but turned out that the default output of this function depend on the **class of input**:
+
+- Numeric vectors: creates **a scatter plot with points** plotted at the corresponding (x, y) coordinates *or against its index*.
+
+- A factor: creates a bar graph, showing the counts for each level of the factor. 
+
+- A factor and a numeric vector: box plot of the numeric vector and the levels of the factor.
+
+- Formula-style input eg. `plot(y ~ x)`: usually also a scatter plot.
+
+- A dataframe: a correlation plot of all dataframe columns (more than two).
+
+- Other **specific objects** (eg. some classes we've encountered)
+
+  - A density object: as shown above, a probability density curve (line plot).
+
+  - A hclust (hierarchical clustering) object: as shown below, creates a dendrogram.
+
+  - Time series: a time series plot; date and a vector: a time-based plot (just like the scatter plot created using two vectors).
+
+
+### Transforming data
+
+Often to visualize or model genomic data is we need to make some data transformations that put it on a *scale that's more appropriate or easier to interpret*. 
+
+#### Log transformations and histograms
+
+- Log transformation: a common transformation for highly skewed data; easier to visualize the distribution. But do remember to plus one (a small number like this won't affect the big counts anyway), or the minimum would be `-Inf` (undefined, since it's taking the log of 0).
+```{r many histograms wandering around...}
+hist(edata[,1])
+# Note that after transformation we can actually see data on the right-hand side as well!!!!! Clear contrast between these two plots.
+hist(log(edata[,1]+1))
+
+# We can also *zoom in* to focus on other parts of the distribution (by setting `xlim` and `ylim`) and thus ignore those zeros. 
+hist(log(edata[,1]+1),breaks=100, xlim=c(1,15),ylim=c(0,400))
+
+# We can also use a histogram to count how many rows have zero/non-zero values:
+hist(rowSums(edata==0))
+```
+
+- Log-2 transformation: common when we want to **compare two values** (`logFC`).
+
+**Other transforms**: 
+
+-  [Variance stabilizing transforms](https://en.wikipedia.org/wiki/Variance-stabilizing_transformation) which seek to remove a mean variance relationship among the data
+
+- [Box-Cox transforms](https://en.wikipedia.org/wiki/Power_transform) which seek to make the data approximately Normally distributed
+
+- [rlog transform](http://rpackages.ianhowson.com/bioc/DESeq2/man/rlog.html) - unique to genomics count data, this is a regularized version of the log transform that seeks to minimize differences at low count levels. 
+
+
+
+### Clustering
+
+This is also one of the most commonly used tools for exploratory analysis of genomic data. Can be useful for exploring multivariate relationships. However, must be treated with caution in terms of: 
+
+- Scaling of the data!!
+
+- Outliers
+
+- Starting values in k-means (in this case, defining the number of clusters (k) also matters).
+
+Clusters can be easily overinterpreted, so we have to keep in mind the relationships when looking at them.
+
+#### Hierarchical clustering and fancy dendrograms
+
+We find the two points that are closest together (measured by their distance/norm, eg. Euclidean norm, which can be obtained by the `dict()` function (compares *rows*!!) from the stats package), connect them together, and merge them (usually by just taking the average of them) so that we can regard them as a new data point, and the same process continues.
+
+**Cluster dendrogram**: this is just the thingy shown automatically when we plot a heat map, constructed by connecting the points that are closest in distance.  
+
+```{r}
+# We first do filtering and then data transformation.
+edata2 = edata[rowMeans(edata) > 5000,]
+edata2 = log2(edata2 + 1)
+
+# Calculates the distance between *rows* so we have to transpose the matrix to compare between the samples (which are originally columns)
+dist1 = dist(t(edata2))
+dist1
+
+## Visualize the distance matrix; we try to make it pretty this time by setting a color ramp!! We also add a color scale 
+colramp = colorRampPalette(c(4,"white",2))(9)
+heatmap(as.matrix(dist1),col=colramp,Colv=NA,Rowv=NA)
+
+# Performing clustering
+hclust1 = hclust(dist1)
+hclust1
+class(hclust1)
+```
+
+Plotting dendrograms!!
+
+```{r fancy dendrograms using input hclust object}
+plot(hclust1)
+
+# We can also force all of the leaves to terminate at the same spot
+plot(hclust1,hang=-1)
+
+# We can also color the dendrogram either into a fixed number of group
+dend = as.dendrogram(hclust1)
+library(dendextend)
+dend = color_labels(hclust1,4,col=1:4)
+plot(dend) 
+
+# Or color them directly with labels_colors() setter
+labels_colors(dend) = c(rep(1,10),rep(2,9))
+plot(dend)
+```
+
+
+
+#### K-means
+
+The same as in ML. Guessing k centers -> assigning data points to closest centers by calculating distance to it -> iteratively recalculate the center of each cluster for optimization -> assign again -> ...
+
+```{r}
+kmeans1 = kmeans(edata2,centers=3) # Here we specified the numbers (k) of centers to be 3
+names(kmeans1) # To check the dataframe
+
+matplot(t(kmeans1$centers),col=1:3,type="l",lwd=3)
+table(kmeans1$cluster) # See how many data points belong to each cluster
+
+heatmap(as.matrix(edata)[order(kmeans1$cluster),],col=colramp,Colv=NA,Rowv=NA)
+```
+
+## Preprocessing
+
+### Dimension reduction
+
+Suppose we have a multivariate matrix X. We want to find:
+
+- A new set of multivariate variables that are uncorrelated with each other and explain as much of the variability across rows or columns as possible. 
+
+- Or, to find the best matrix that's an approximation to the original matrix (explains the original data) but has a lower rank or fewer variables. 
+
+These two goals are a little bit different. One is statistical, and the other is data compression or mathematical, but it turns out that they can have very similar solutions:
+
+#### SVD and PCA
+
+There are many other common decompositions, but here we only cover PCA (via SVD). Recalling further maths ;_;
+
+**PCA is essentially SVD applied to a column-wise mean-centered (standardized, to focus on covariance structure) data matrix.** That's why when we applied the `svd()` function for *SVD* in the code chunks below we first mean-centered the columns of the data manually!! If we don't do that, the first singular value will always be the mean level, which will always explain the most variation in genomic experiment; however, we actually want to see variation between samples or between genes. In the latter code chunk where we first used `prcomp(edata)`, that's the actual function for PCA rather than SVD so it didn't require us to do the manual mean-centering step. 
+
+- Due to the orthogonality of both the left- and right-singular vectors, the patterns are uncorrelated! So each component can capture distinct pattern in the data X!! 
+
+  - The left-singular vectors (columns of U) tell us about patterns that exist **across different rows** of the dataset, while the right-singular vectors (in V^T) tell us about patterns across columns. The singular values in D represent how much of the variance is explained by the patterns. (Recall eigendecomposition!!) 
+
+- If we take the i-th element of D (d<sub>i</sub>, i.e. the i-th singular value), square it, and divide it by the sum of all elements of D, we get the **percentage of the data X's total variance explained by the i-th component**. (Since d<sub>i</sub>^2 just corresponds to the i-th eigenvalue of XX^T (or the other way around), and eigenvalues just represent magnitude of variance in PCA) 
+
+- Recall that in PCA we aim to find the directions of maximal variance -> finding the first PCs.
+
+```{r getting PC loadings}
+# The actual PCA is done by subtracting the column means rather than the row means (see in the following code chunks for svd2), but this is commonly done (if we want to compare the **samples**...?) and sometimes the output is called 'PCs' interchangeably, like below. 
+edata2 = edata[rowMeans(edata) > 100,]
+edata2 = log2(edata2 + 1)
+edata2_centered = edata2 - rowMeans(edata2) # 1198 x 19
+svd1 = svd(edata2_centered)
+names(svd1)
+dim(svd1$u) # Its 19 columns represent patterns **across rows** 
+svd1$d # In descending order
+
+plot(svd1$d,ylab="Singular value",col=4)
+plot(svd1$d^2/sum(svd1$d^2),ylab="Percent Variance Explained",col=4)
+
+par(mfrow=c(1,2))
+plot(svd1$v[,1],col=4,ylab="1st PC") # Well, no, these two are actually not the PCs (which are the columns of UD) but rather the *loadings* for PC1 and PC2 since we're taking the columns of V.
+plot(svd1$v[,2],col=4,ylab="2nd PC")
+
+par(mfrow=c(1,1))
+
+# A very common plot is to plot PC1 versus PC2 to see if there are any "clusters" or "groups", and color them by different covariates in the phenotype data.
+# In the course lecture the covariate examined was `pdata$study` but that column isn't present in my pdata aaaaa, so just for illustration I used gender here which shows no relationship with the clustering,,,,,
+plot(svd1$v[,1],svd1$v[,2],ylab="2nd PC",
+     xlab="1st PC",col=as.numeric(pdata$gender))
+
+
+# Another common plot is to make boxplots comparing the PC for different levels of known covariates (don't forget to show the actual data by plotting the jittered points!!).
+# Again I used the irrelevant '$gender' just for illustration for the plotting syntax :(, so sad.
+boxplot(svd1$v[,1] ~ pdata$gender,border=c(1,2))
+points(svd1$v[,1] ~ jitter(as.numeric(pdata$gender)),col=as.numeric(pdata$study))
+# Note that jitter() adds **horizontal** noise, which is why it's applied at the 'x' slot in the 'y ~ x' formula argument.
+```
+
+
+```{r actual PCs}
+# This is by directly applying the function for PCA rather than standardizing by hand and then use SVD.
+pc1 = prcomp(edata2)
+plot(pc1$rotation[,1],svd1$v[,1])
+
+# Here we obtain the actual PCs by mean-centering for columns rather than rows, as in the previous code chunk...
+edata2_centered2 = t(t(edata2) - colMeans(edata2))
+svd2 = svd(edata2_centered2)
+# And we can confirm that results for these two operations are now identical, since the line y = x is fitted. 
+plot(pc1$rotation[,1],svd2$v[,1],col=4)
+abline(c(0,1)) # At least I remembered the syntax of this function ;_;  it's so upsetting when everything learned gets forgotten and just slips away so soon...
+```
+
+
+```{r testing the effects of hugely-outlied outliers to decomposition}
+edata_outlier = edata2_centered
+edata_outlier[1,] = edata2_centered[1,] * 10000
+svd3 = svd(edata_outlier)
+par(mfrow=c(1,2))
+plot(svd1$v[,1],col=1,main="Without outlier")
+plot(svd3$v[,1],col=2,main="With outlier")
+# Results of both decompositions don't match
+```
+
+### Preprocessing and normalization
+
+- Preprocessing is the step where we take the raw data and turn it into a set of data that we can actually do statistical modeling on. 
+
+  - Normalization is the step where we try to make samples have appropriate distribution or common distribution (eg. the result of quantile normalization).
+
+These are highly platform- and problem-dependent. But overall we want to make sure that there aren't bulk differences between samples, especially due to technology. 
+
+#### Quantile normalization
+
+<https://en.wikipedia.org/wiki/Quantile_normalization>
+
+Most suitable for cases when there's large variability **within groups** (eg. due to **technical variability** or batch effects within groups) but small variability **across groups**. 
+
+- When there's small variability within groups yet large variability across groups and we want to identify the global *biological variability* rather than technical variability, **don't** use quantile normalization, which will sadly force the distribution to be exactly the same. 
+
+```{r normalizes; also uses a `for` loop to overlay more lines~~}
+edata2 = log2(edata + 1)
+edata2 = edata2[rowMeans(edata2) > 3, ]
+colramp = colorRampPalette(c(3,"white",2))(20)
+plot(density(edata2[,1]),col=colramp[1],lwd=3,ylim=c(0,.30)) # `lwd` stands for line width, and the parameter here sets the line three times thicker than default. 
+# **Loop over the 19 samples and add lines that overlay on top of the line plot**.
+for(i in 2:19){lines(density(edata2[,i]),lwd=3,col=colramp[i])}
+# Looks like technical variability. So we'll then use quantile normalization.
+
+# Quantile normalization using the preprocessCore package
+library(preprocessCore)
+norm_edata = normalize.quantiles(as.matrix(edata2))
+
+# Plot again.
+# Quantiles for the very low/high values are difficult to match up, so often we'll see a little bit (well...) variation in these values. But for the most part... the distributions lay exactly on top of each other:
+plot(density(norm_edata[,1]),col=colramp[1],lwd=3,ylim=c(0,.20))
+for(i in 2:19){lines(density(norm_edata[,i]),lwd=3,col=colramp[i])}
+```
+
+The cool thing is that even though we've done quantile normalization and normalized out the total distribution to be exactly the same, we haven't removed biological variability in expression patterns. So if we do a PCA on the normalized data, we can still see the clustering pattern for `$study`. Sadly, similar to the previous section, that column is no longer accessible T_T. 
+
+## Statistical modeling
+
+### Linear models
+
+Y = b0 + b1X + e, where b0 is the intercept, b1 is the slope, and *e is the random noise: everything we didn't measure*. Fitting is optimizing/minimizing the MSE between Y and (b0 + b1X). 
+
+When dealing with non-continuous covariates (categorical covariates), use beta coefficients and categorical labels (binary indicators, 0/1, **one 0/1 label assigned to each level**). In the following code chunk, we'll see that R **automatically converts categorical data to these binary labels**. This is SO much more convenient than what i learned in sklearn, which requires you to manually convert them :O
+
+#### Linear regression in R
+
+Some terms: 
+
+- **Estimates**: weights/coefficients beta. `lm_model$coefficients`
+
+- **Residuals**: errors, the vertical distance between the observed value (y) and the fitted value (y-hat) on the same x. `lm_model$residuals`
+
+```{r}
+# Suppose we want to ask: what is the relationship between gene expression (y) and age (x)?
+library(limma)
+library(edge)
+lm1 = lm(as.matrix(edata)[1,] ~ pdata$age)
+library(broom)
+tidy(lm1) # tidy(): turns an object of other classes (eg. an 'lm' object (**a fitted model**) here, supported by the brook package) into a tidy tibble
+plot(pdata$age,as.matrix(edata)[1,])
+abline(c(lm1$coeff[1],lm1$coeff[2]), col=4,lwd=3)
+
+# We also want to find the relationship between gene expression and gender (which I have already plotted due to the $study error Q_Q). Unlike age, which is a quantitative covariate, gender right now is a factor (non-continuous and categorical), so it has to be converted to the binary indicators 0/1 first. 
+pdata$gender=="M"
+# R actually does this automatically!!!!!! ily R <3 
+lm2 = lm(as.matrix(edata)[1,] ~ pdata$gender)
+tidy(lm2)
+model.matrix(~pdata$gender)
+```
+
+Recall from Course 5 (in `limma` I think, which just leverages linear models) that there's the concept 'reference level', which is just the first level in the factor. When we try to print the design matrix it returns exactly the same rows: intercept and the remaining levels other than the reference level. 
+```{r}
+pdata$gender # F is the first level -> reference level! -> control group
+```
+
+
+```{r categorical variables with multiple levels and multiple categorical variables}
+table(pdata$tissue.type)
+pdata$tissue.type == "adipose"
+# This leads to **multiple coefficients for one variable** (since one binary label is assigned for each level in the categorical variable)
+tidy(lm(as.matrix(edata)[1,] ~ pdata$tissue.type))
+
+# Multiple categorical variables (**adjusting for** covariates)
+tidy(lm(as.matrix(edata)[1,] ~ pdata$age + pdata$gender))
+
+# Adding *interaction terms* between variabless
+tidy(lm(as.matrix(edata)[1,] ~ pdata$age * pdata$gender))
+```
+
+```{r residuals}
+index = 1:19
+lm3 = lm(as.matrix(edata)[1,] ~ index)
+plot(index, as.matrix(edata)[1,])
+hist(lm3$residuals)
+
+# Transform the data first to see the residuals
+lm4 = lm(log2(as.matrix(edata)[1,]+1) ~ index)
+hist(lm4$residuals)
+
+# When we fit many variables that there are now more coefficients than sample points (underdetermined), R actually makes estimations,,, (without explicitly telling us)
+tidy(lm(log2(as.matrix(edata)[1,]+1) ~ pdata$tissue.type + pdata$age)) # Recall that there are so many levels in $tissue.type, leading to many coefficients (for each level)
+
+colramp = colorRampPalette(1:4)(17)
+plot(lm(as.matrix(edata)[2,] ~ pdata$age)$residuals,col=colramp[as.numeric(pdata$tissue.type)])
+# as.numeric(pdata$tissue.type) is just 1:17...
+```
+#### Fitting many regressions at once and limma revisit
+
+In genomics it's often the case that we want to fit **many regression models simultaneously** for many variables (primary/biological variables and adjustment variables). So instead of Y = b0 + b1X + e with vectors (and constants for coefficients) we'll stack these into matrices, so it would be like matrix multiplication.
+
+Remember in our last few code chunks, the models we fitted (eg. `lm3`) are all fitted on **one gene** eg. by `as.matrix(edata)[1,]` (one single row of the expression matrix). Now we use `lm.fit()` and `lmFit` of the `limma` package to **fit all the selected genes at the same time**, so we do that many regressions at once. This is why we need the **design matrix (about the samples and their covariates)**, since these parameters are exactly the same for every gene/every model we fit. And then we can fit all of them using `lm.fit`, just like what we did in Course 5, and it'll return a *set* of coefficients for each model fitted for that gene. 
+
+```{r}
+# Using a different dataset
+con =url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bottomly_eset.RData")
+load(file=con)
+close(con)
+bot = bottomly.eset
+pdata2=pData(bot)
+edata2=as.matrix(exprs(bot))
+fdata2 = fData(bot)
+ls()
+
+
+edata2 = log2(edata2 + 1)
+edata2 = edata2[rowMeans(edata2) > 10, ] # actually idk why the filter conditions for gene expression levels always change in every practical session, but imma just stick with it
+
+# Getting the design matrix!! exactly the same as what we did in Course 5
+design = model.matrix(~ pdata2$strain)
+
+fit = lm.fit(design,t(edata2)) # lm.fit() rather than lm()
+fit$coefficients[,1] # The coefficient for *each* model fitted is stored in the **columns** of the coefficient matrix
+tidy(lm(as.numeric(edata2[1, ]) ~ pdata2$strain)) # Comparing to output a lm(), which is fitting a single model for a single gene. Almost the same.
+
+# Fit many regressions with an **adjustment variable** （'strain' is the primary variable of interest; we also adjust for 'lane number', which might contribute to batch effects). 
+design_adj = model.matrix(~ pdata2$strain + as.factor(pdata2$lane.number))
+fit_adj = lm.fit(design_adj,t(edata2))
+fit_adj$coefficients[,1]
+rownames(fit_adj$coefficients)
+
+# Fit using the limma package (the edge package basically does the same thing)
+fit_limma = lmFit(edata2,design_adj)
+names(fit_limma)
+identical(fit_limma$coefficients[1,],fit_adj$coefficients[,1])
+```
+
+
+### Batch effects and confounders
+
+A **batch** refers to **a group of samples** processed together under the same technical conditions, which can introduce non-biological variation. Batch effects are thus **non-biological** experimental variations that can be caused by many confounders eg. lab conditions, time conducted, etc.
+
+We usually account for batch effects by **adjusting for variables**, i.e. Y = b0 + b1P + b2B + e, where P is phenotype, the primary variable we care about (this term becomes zero for null hypothesis), and B represents batch effects/adjustment variables. 
+
+The `sva` package provides methods to deal with this, eg. `ComBat` (empirical Bayes; requires **known batch labels**), and `SVA` (Surrogate Variable Analysis) for **unknown** batch effects as it **infers these hidden confounders (surrogate variables/SVs)** from data.
+
+### Logistic regression
+
+// [Logistic Regression: Understanding odds and log-odds](https://medium.com/wicds/logistic-regression-understanding-odds-and-log-odds-61aecdc88846): this is SO EXTREMELY clear and helpful~~ super super grateful sobs 
+
+Used in binary classification problems, in which the outcome only takes two values (0/1) and thus isn't continuous at all. However, this is called a '*regression*' (although it indeed is a classification model), which is supposed to predict a continuous value: **to fit a regression line, the target variable must be made continuous**. 
+
+This is why we need the **log odds**!!!!!
+
+Odds (or *odds ratio*) is just the probability of an event occurring (P) divided by the probability that it won't occur (1-P). Taking the log of this and we get the log odds, which is **nothing but the logit function**. 
+
+**Probability ranges from 0 to 1. Odds range from 0 to `Inf`. Log odds range from `-Inf` to `Inf`** (Isn't that already intuitive enough to explain why log odds are used in fitting the regression line!?)
+
+The **inverse** of `logit()` is just the well-known `sigmoid()`, i.e. `sigmoid(logit(P)) == P`. So we now know that `logit()` **maps probabilities to the full range of real numbers**. `sigmoid()` maps arbitrary real values back to the range [0,1]. We can interpret `sigmoid()` as the generalized form of `logit()`.
+
+Okie now we've finally got an idea of the concept (yayyyy). Let's consider a case-control study in genomics, where we want to *find the relationship between two binary variables*: the genotype (C or T, represented by 'G' on the screenshot below) and the condition (case or control, represented by 'C'). We use logistic regression and implement the idea of log odds here:
+
+![Logit in a case-control study](https://freeimghost.net/images/2025/05/02/Screenshot-2025-05-02-at-21.11.04.png)
+
+
+### Regression for counts and GLMs
+
+Now we'll move away from problems with only a binary output to another type of regression problem in genomics where the goal is to model counts (i.e. how many reads covered each gene). Regression for counts data aims to model the mean count as a function of predictors (eg. treatment, batch, covariates). 
+
+**Since counts data is usually non-continuous, a standard linear regression (which assumes continuous outcome and normally distributed errors) is inappropriate**. Thus we use **generalized linear models** via `glm()`, and we can specify the distribution by setting the `family` parameter in `glm()` (one application is just logistic regression, where we use `family="binomial"`). 
+
+When regressing counts data:
+
+-	Using a non-Gaussian distribution (eg. Poisson via `glm(y ~ x, family = poisson(link = "log"))`; Negative Binomial/NB which handles overdispersion (i.e. Var(counts) > Mean(counts)) via `glm.nb(y ~ x)` supported by the `MASS` package.).
+
+- Introducing a link function to map between *linear predictor* and the possible range of the outcome We use the **log** link function here to ensure that predictions of counts are non-negative.
+
+
+Just like how we can use the `limma` package to fit many linear models at once, we can use `DESeq2` illustrated earlier in Course 5 to **do many NB regressions at once**: `fitted_glms = DESeq(design_matrix)` and then `result_counts = results(fitted_glms)`.
