@@ -523,7 +523,7 @@ pheatmap(exp_diff_sorted,
          fontsize_col=3)
 ```
 ![sortedDEGheatmap](https://freeimghost.net/images/2025/05/05/sortedDEGheatmap.png)
-（太丑了，dbq，不应该加聚类的有点可怕了）
+（太丑了，dbq，不应该加聚类的55555 有点可怕了）
 
 
 ### 两次差异分析结果取交集
@@ -803,7 +803,7 @@ dev.off()
 
 再将这一表格导入仙桃学术画分组比较图中的柱状图，两个柱子就对应两列（'Normal'和'Tumor'）。参数调一调，导出。
 
-![Lecture screenshot](https://freeimghost.net/i/Screenshot-2025-05-07-at-14.01.40.x4UXkg) 
+![Lecture screenshot](https://freeimghost.net/images/2025/05/17/Screenshot-2025-05-17-at-16.18.00.png)
 
 ### 样本配对原理及配对图
 
