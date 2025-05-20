@@ -588,14 +588,12 @@ R only evaluates arguments when they’re actually used in the function
 
     ## [1] "a" "c"
 
--   Vector arithmetic operations are done element-wise. If the lengths
-    don’t match, R will **‘recycle’ the shorter vector by repeating it
-    to match the length of the longer one**.
+-   Vector arithmetic operations are done element-wise. If the lengths don’t match, R will **‘recycle’ the shorter vector by *repeating* it to match the length of the longer one**.
 
     -   **This is not the same as broadcasting in numpy**, which allows
         the input arrays to have different numbers of *dimensions* but
-        NOT different shapes (except when one of the input is 1) in the
-        *same dimension* (compared right to left). So vector recycling
+        not incompatible shapes (except when one of the input is 1) in the
+        *same dimension* (compared right to left; padding with 1s on the left if needed). So vector recycling in R
         is more flexible.
 
 -   `sort()` sorts the vector in ascending order; `rev()` reverses the
