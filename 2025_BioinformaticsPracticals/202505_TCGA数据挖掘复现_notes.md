@@ -4,6 +4,8 @@ Course link: <https://www.bilibili.com/video/BV1nc411g7G3>
 
 // 本来是在R markdown里面跑来着，但反正最后也没knit几个代码块，不如直接拷贝到md里面方便。
 
+---
+
 - [Day 1: Basic R Recaps](#day-1-basic-r-recaps)
     - [Recap: data.frame](#recap-dataframe)
   - [Recap: processing data](#recap-processing-data)

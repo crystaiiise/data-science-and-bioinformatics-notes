@@ -3,6 +3,8 @@ Notes for the book *Deep Learning*:
 
 Goodfellow, I., Bengio, Y., & Courville, A. (2017). Deep Learning. The MIT Press. 
 
+---
+
 - [Chapter 1: Intro](#chapter-1-intro)
 	- [‘Deep’](#deep)
 - [Chapter 2: Linear Algebra](#chapter-2-linear-algebra)
