@@ -3,7 +3,27 @@ Notes for the book *Deep Learning*:
 
 Goodfellow, I., Bengio, Y., & Courville, A. (2017). Deep Learning. The MIT Press. 
 
+- [Chapter 1: Intro](#chapter-1-intro)
+	- [‘Deep’](#deep)
+- [Chapter 2: Linear Algebra](#chapter-2-linear-algebra)
+	- [Matrix Decompositions](#matrix-decompositions)
+	- [PCA](#pca)
+- [Chapter 3: Probability and Information Theory](#chapter-3-probability-and-information-theory)
+	- [Probability Distributions](#probability-distributions)
+		- [Joint probability distribution and related concepts](#joint-probability-distribution-and-related-concepts)
+		- [Common probability distributions](#common-probability-distributions)
+		- [Structured probabilitic models/graphical models](#structured-probabilitic-modelsgraphical-models)
+	- [Information theory](#information-theory)
+		- [Quantifying content of information](#quantifying-content-of-information)
+		- [Quantifying divergence of distributions](#quantifying-divergence-of-distributions)
+- [Chapter 4: Numerical Computation](#chapter-4-numerical-computation)
+	- [Gradient-Based Optimization](#gradient-based-optimization)
+		- [Why  'gradient-based' optimization?](#why--gradient-based-optimization)
+		- [Constrained optimization](#constrained-optimization)
+		- [Applying constrained optimization: linear least squares](#applying-constrained-optimization-linear-least-squares)
 
+
+---
 
 ## Chapter 1: Intro
 
@@ -209,7 +229,7 @@ Machine learning algorithms often involve probability distributions over a *very
 
 
 
-### **Information theory** 
+### Information theory 
 // i'm so extremely lazy here >:(
 
 Information theory allows us to **quantify** the amount of uncertainty in a probability distribution.

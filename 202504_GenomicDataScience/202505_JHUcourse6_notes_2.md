@@ -3,6 +3,22 @@ Course link:
 
 Continued from Module 3.
 
+---
+
+- [Statistical inference](#statistical-inference)
+  - [Comparing model fits under H0/Ha hypotheses and the F-statistic](#comparing-model-fits-under-h0ha-hypotheses-and-the-f-statistic)
+  - [Calculating test statistics in R](#calculating-test-statistics-in-r)
+  - [Permutation test](#permutation-test)
+  - [P-values, multiple testing, and corrections](#p-values-multiple-testing-and-corrections)
+- [Other Genomic Experimental Designs](#other-genomic-experimental-designs)
+  - [GSEA](#gsea)
+  - [eQTL](#eqtl)
+  - [Statistical inference vs. prediction](#statistical-inference-vsprediction)
+- [The end](#the-end)
+
+
+---
+
 ## Statistical inference
 
 <figure>

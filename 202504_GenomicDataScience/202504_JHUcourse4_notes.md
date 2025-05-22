@@ -4,6 +4,39 @@ Course link: <https://www.coursera.org/learn/genomic-tools?specialization=genomi
 
 ---
 
+- [Basic Unix Commands](#basic-unix-commands)
+  - [Related to directories](#related-to-directories)
+  - [Viewing file content](#viewing-file-content)
+  - [Redirecting](#redirecting)
+  - [Querying and processing content](#querying-and-processing-content)
+  - [Comparing content](#comparing-content)
+  - [Archiving](#archiving)
+- [Sequences and Genomic Features](#sequences-and-genomic-features)
+  - [Genomic feature representations: BED/GTF](#genomic-feature-representations-bedgtf)
+    - [BED format: Browser Extensible Data.](#bed-format-browser-extensible-data)
+    - [GTF format](#gtf-format)
+  - [Alignments: SAM and paired-end sequencing](#alignments-sam-and-paired-end-sequencing)
+    - [SAM format: Sequence Alignment/Map](#sam-format-sequence-alignmentmap)
+  - [Retrieving sequences and features](#retrieving-sequences-and-features)
+  - [SAMtools and BEDtools](#samtools-and-bedtools)
+    - [SAMtools](#samtools)
+    - [Sorting and indexing](#sorting-and-indexing)
+    - [BEDtools](#bedtools)
+- [Alignment \& Sequence Variation](#alignment--sequence-variation)
+  - [Genomic tools](#genomic-tools)
+    - [Alignment tools: Bowtie and BWA](#alignment-tools-bowtie-and-bwa)
+    - [Sequence variation tools: SAMtools mpileup and BCFtools](#sequence-variation-tools-samtools-mpileup-and-bcftools)
+    - [Simple application: variant calling](#simple-application-variant-calling)
+- [Tools for Transcriptomics](#tools-for-transcriptomics)
+    - [Running a shell script](#running-a-shell-script)
+    - [Alignment: TopHat](#alignment-tophat)
+    - [Transcript assembly: Cufflinks](#transcript-assembly-cufflinks)
+    - [Differntial analysis for expression and splicing: Cuffdiff](#differntial-analysis-for-expression-and-splicing-cuffdiff)
+    - [Visualization: IGV](#visualization-igv)
+
+
+---
+
 ## Basic Unix Commands
 
 > Some background info to get things *rlly* clear... OvO

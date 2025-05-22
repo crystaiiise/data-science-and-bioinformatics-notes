@@ -1,6 +1,38 @@
 Course link:
 <https://www.coursera.org/learn/statistical-genomics?specialization=genomic-data-science>
 
+---
+
+- [Getting started…](#getting-started)
+    - [Experimental design](#experimental-design)
+  - [Exploratory analysis](#exploratory-analysis)
+    - [Plotting](#plotting)
+    - [Q-Q plot](#q-q-plot)
+    - [MA plot](#ma-plot)
+    - [Data filtering](#data-filtering)
+    - [Data consistency check](#data-consistency-check)
+    - [Reminder on the plot() function](#reminder-on-the-plot-function)
+  - [Transforming data](#transforming-data)
+    - [Log transformations and histograms](#log-transformations-and-histograms)
+  - [Clustering](#clustering)
+    - [Hierarchical clustering and fancy dendrograms](#hierarchical-clustering-and-fancy-dendrograms)
+    - [K-means](#k-means)
+- [Preprocessing](#preprocessing)
+  - [Dimension reduction](#dimension-reduction)
+    - [SVD and PCA](#svd-and-pca)
+  - [Preprocessing and normalization](#preprocessing-and-normalization)
+    - [Quantile normalization](#quantile-normalization)
+- [Statistical modeling](#statistical-modeling)
+  - [Linear models](#linear-models)
+    - [Linear regression in R](#linear-regression-in-r)
+    - [Fitting many regressions at once and limma revisit](#fitting-many-regressions-at-once-and-limma-revisit)
+  - [Batch effects and confounders](#batch-effects-and-confounders)
+  - [Logistic regression](#logistic-regression)
+  - [Regression for counts and GLMs](#regression-for-counts-and-glms)
+
+
+---
+
 ## Getting started…
 
 #### Experimental design

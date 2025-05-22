@@ -6,6 +6,50 @@ Course link:
 Course GitHub page:
 <http://kasperdanielhansen.github.io/genbioconductor/>
 
+---
+
+- [GRanges](#granges)
+  - [IRanges](#iranges)
+    - [findOverlaps()](#findoverlaps)
+  - [GRanges and the GenomicRanges Package](#granges-and-the-genomicranges-package)
+  - [Seqinfo](#seqinfo)
+    - [Filtering ranges by seqname/chromosome](#filtering-ranges-by-seqnamechromosome)
+  - [GRanges Usage](#granges-usage)
+    - [The capital DataFrame](#the-capital-dataframe)
+    - [GRanges metadata columns](#granges-metadata-columns)
+    - [findOverlaps()](#findoverlaps-1)
+    - [makeGRangesFromDataFrame()](#makegrangesfromdataframe)
+- [AnnotationHub](#annotationhub)
+- [Biostrings and BSgenome](#biostrings-and-bsgenome)
+  - [Basic intro to the two packages](#basic-intro-to-the-two-packages)
+  - [Biostrings: matching](#biostrings-matching)
+  - [The Views object](#the-views-object)
+  - [GenomicRanges: Rle (run-length-encoded) vectors](#genomicranges-rle-run-length-encoded-vectors)
+  - [GenomicRanges: \_Lists](#genomicranges-_lists)
+    - [GRangesList](#grangeslist)
+  - [GenomicFeatures and TxDb](#genomicfeatures-and-txdb)
+    - [TxDb objects](#txdb-objects)
+  - [rtracklayer and importing data](#rtracklayer-and-importing-data)
+- [Representing data in Bioconductor](#representing-data-in-bioconductor)
+  - [ExpressionSet](#expressionset)
+  - [SummarizedExperiment](#summarizedexperiment)
+  - [GEOquery](#geoquery)
+  - [biomaRt](#biomart)
+  - [The S4 System](#the-s4-system)
+    - [S4 classes](#s4-classes)
+    - [S4 methods](#s4-methods)
+- [Getting data into Bioconductor](#getting-data-into-bioconductor)
+  - [ShortRead](#shortread)
+    - [Rsamtools](#rsamtools)
+  - [Quick skim: microarray data](#quick-skim-microarray-data)
+  - [Differential analysis](#differential-analysis)
+    - [Borrowing information across genes](#borrowing-information-across-genes)
+    - [An example two-group comparison using limma](#an-example-two-group-comparison-using-limma)
+    - [Simplified RNA-seq differential analysis workflow](#simplified-rna-seq-differential-analysis-workflow)
+
+
+---
+
 > `BiocManager::install("name")` to install a package inside
 > Bioconductor!!!!
 

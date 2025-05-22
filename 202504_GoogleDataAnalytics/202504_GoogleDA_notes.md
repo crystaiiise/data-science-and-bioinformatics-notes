@@ -2,9 +2,42 @@
 
 // (Very condensed notes taken here... mostly around spreadsheet and SQL basics)
 
-
-
 Course link: <https://www.coursera.org/professional-certificates/google-data-analytics>
+
+---
+
+- [Course 2: Ask Questions to Make Data-Driven Decisions](#course-2-ask-questions-to-make-data-driven-decisions)
+	- [Spreadsheet Basics](#spreadsheet-basics)
+		- [Spreadsheet tasks:](#spreadsheet-tasks)
+- [Course 3: Prepare Data for Exploration](#course-3-prepare-data-for-exploration)
+	- [Data types and structures](#data-types-and-structures)
+		- [Formats of data](#formats-of-data)
+		- [Data tables](#data-tables)
+	- [Databases](#databases)
+		- [Import, sort and filter data](#import-sort-and-filter-data)
+		- [SQL and BigQuery](#sql-and-bigquery)
+- [Course 4: Process Data from Dirty to Clean](#course-4-process-data-from-dirty-to-clean)
+	- [Data cleaning](#data-cleaning)
+	- [Data cleaning with spreadsheet tools](#data-cleaning-with-spreadsheet-tools)
+		- [Some spreadsheet functions](#some-spreadsheet-functions)
+		- [Viewing data](#viewing-data)
+	- [Cleaning data in SQL](#cleaning-data-in-sql)
+		- [Some more SQL queries](#some-more-sql-queries)
+		- [Queries for cleaning data](#queries-for-cleaning-data)
+	- [Verify and report on cleaning results](#verify-and-report-on-cleaning-results)
+- [Course 5: Analyze Data to Answer Questions](#course-5-analyze-data-to-answer-questions)
+	- [Organizing data in spreadsheets](#organizing-data-in-spreadsheets)
+	- [Formatting and adjusting data](#formatting-and-adjusting-data)
+		- [String functions in spreadsheets (similar to those in SQL)](#string-functions-in-spreadsheets-similar-to-those-in-sql)
+	- [Data Aggregation](#data-aggregation)
+	- [Data calculations](#data-calculations)
+		- [In spreadsheets](#in-spreadsheets)
+		- [In SQL](#in-sql)
+- [Course 6: Share Data Through the Art of Visualization](#course-6-share-data-through-the-art-of-visualization)
+	- [A Tableau tour](#a-tableau-tour)
+		- [Tableau dashboards](#tableau-dashboards)
+	- [Presentations and slideshows](#presentations-and-slideshows)
+- [Course 7: Data Analysis with R Programming](#course-7-data-analysis-with-r-programming)
 
 
 ---

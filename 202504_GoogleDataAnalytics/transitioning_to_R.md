@@ -1,9 +1,49 @@
-**Sources**: [R Tutorial on
+Sources: [R Tutorial on
 W3Schools](https://w3schools.tech/tutorial/r/index) and [Google Data
 Analytics](https://www.coursera.org/professional-certificates/google-data-analytics)
 Course 7. I also added a few notes while taking JHU’s [Genomic Data
 Science
 Specialization](https://www.coursera.org/specializations/genomic-data-science).
+
+Date created: 2025-04-21
+
+---
+
+- [RStudio](#rstudio)
+- [R Basics](#r-basics)
+  - [Variables](#variables)
+    - [Finding variables](#finding-variables)
+  - [Data structure overview](#data-structure-overview)
+  - [Operators](#operators)
+    - [Arithmetic](#arithmetic)
+    - [Relational](#relational)
+    - [Logical](#logical)
+    - [Miscellaneous](#miscellaneous)
+  - [Conditional and loop control statements](#conditional-and-loop-control-statements)
+  - [Functions](#functions)
+    - [Defining a function](#defining-a-function)
+  - [Strings](#strings)
+  - [Vectors](#vectors)
+  - [Lists](#lists)
+  - [Matrices](#matrices)
+  - [Arrays](#arrays)
+  - [Factor](#factor)
+  - [Packages](#packages)
+  - [Data frames](#data-frames)
+- [Course Notes](#course-notes)
+  - [Dealing with data in R](#dealing-with-data-in-r)
+    - [‘ToothGrowth’ exploration](#toothgrowth-exploration)
+    - [‘diamonds’ exploration](#diamonds-exploration)
+    - [Other quick overviews, cleaning, and organization of data](#other-quick-overviews-cleaning-and-organization-of-data)
+  - [Visualization in R](#visualization-in-r)
+    - [Basic grammar for plotting in ggplot2](#basic-grammar-for-plotting-in-ggplot2)
+    - [More about aesthetics](#more-about-aesthetics)
+    - [More about geom functions](#more-about-geom-functions)
+    - [Facets, labels and annotations](#facets-labels-and-annotations)
+    - [Saving our viz](#saving-our-viz)
+
+
+---
 
 ## RStudio
 
